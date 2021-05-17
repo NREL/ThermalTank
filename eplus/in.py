@@ -137,10 +137,10 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         cp_avg = (cp_in + cp_out) / 2
 
         # calc tank
-        tank = self.tank.calculate(t_in, mdot_act, 24, 60)
-
-        # determine outlet temperature
-        t_out = t_in - (load_act / (mdot_act * cp_avg))
+        self.tank.calculate(t_in, mdot_act, 24, 60)
+        t_out = self.tank.outlet_fluid_temp
+        print(f't_in={t_in}')
+        print(f't_out={t_out}')
 
         # set outlet actuators
         self.api.exchange.set_actuator_value(state, self.mdot_out_hndl, mdot_act)
