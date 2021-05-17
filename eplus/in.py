@@ -140,6 +140,7 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         self.tank.calculate(t_in, mdot_act, 24, 60)
         t_out = self.tank.outlet_fluid_temp
         print(f't_in={t_in}')
+        print(f'load={load_in}')
         print(f't_out={t_out}')
 
         # set outlet actuators
