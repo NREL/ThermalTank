@@ -317,9 +317,9 @@ Schedule:Compact,
   Until: 8:00,                            !- Field 3
   0,                                      !- Field 4
   Until: 12:00,                           !- Field 5
-  -25000,                                 !- Field 6
+  -250,                                   !- Field 6
   Until: 24:00,                           !- Field 7
-  -100000;                                !- Field 8
+  0;                                      !- Field 8
 
 Branch,
   Main Loop Demand Inlet Branch,          !- Name
@@ -374,4 +374,3 @@ Output:Variable,
   User Def Plant Comp Outlet Node,        !- Key Value
   System Node Temperature,                !- Variable Name
   Timestep;                               !- Reporting Frequency
-
