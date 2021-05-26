@@ -17,6 +17,27 @@ class TestSimpleIceTank(unittest.TestCase):
         }
 
     def test_init(self):
+        # init from initial temp passed into ctor
+        tank = IceTank(self.data)
+        self.assertAlmostEqual(tank.diameter, 2.26, delta=0.01)
+        self.assertAlmostEqual(tank.height, 2.57, delta=0.01)
+        self.assertAlmostEqual(tank.fluid_volume, 6.26, delta=0.01)
+        self.assertAlmostEqual(tank.total_fluid_mass, 6253.73, delta=0.01)
+        self.assertAlmostEqual(tank.area_lid, 4.01, delta=0.01)
+        self.assertAlmostEqual(tank.area_base, 4.01, delta=0.01)
+        self.assertAlmostEqual(tank.area_wall, 18.22, delta=0.01)
+        self.assertAlmostEqual(tank.area_total, 26.25, delta=0.01)
+        self.assertAlmostEqual(tank.r_value_lid, 4.23, delta=0.01)
+        self.assertAlmostEqual(tank.r_value_base, 1.58, delta=0.01)
+        self.assertAlmostEqual(tank.r_value_wall, 1.58, delta=0.01)
+        self.assertAlmostEqual(tank.resist_inside, 3.81e-05, delta=1e-05)
+        self.assertAlmostEqual(tank.resist_outside, 3.81e-04, delta=1e-04)
+        self.assertAlmostEqual(tank.resist_conduction, 6.68e-02, delta=1e-02)
+        self.assertAlmostEqual(tank.overall_ua, 14.98, delta=0.01)
+
+        # init from SOC passed into ctor
+        self.data.pop("initial_temperature", None)
+        self.data["latent_state_of_charge"] = 0.0
         tank = IceTank(self.data)
         self.assertAlmostEqual(tank.diameter, 2.26, delta=0.01)
         self.assertAlmostEqual(tank.height, 2.57, delta=0.01)
@@ -268,3 +289,43 @@ class TestSimpleIceTank(unittest.TestCase):
         self.assertAlmostEqual(tank.effectiveness(3), 0.85, delta=0.01)
         self.assertAlmostEqual(tank.effectiveness(4), 0.72, delta=0.01)
         self.assertAlmostEqual(tank.effectiveness(5), 0.6, delta=0.01)
+
+    def test_init_state(self):
+        # uninitialized tank
+        self.data.pop("initial_temperature", None)
+        tank = IceTank(self.data)
+        self.assertEqual(tank.ice_mass, None)
+        self.assertEqual(tank.tank_temp, None)
+        self.assertEqual(tank.outlet_fluid_temp, None)
+
+        # can't set both error
+        with self.assertRaises(IOError):
+            tank.init_state(latent_state_of_charge=0, tank_init_temp=0)
+
+        # can't set none error
+        with self.assertRaises(IOError):
+            tank.init_state()
+
+        # fully charged tank
+        tank.init_state(latent_state_of_charge=1.0)
+        self.assertEqual(tank.ice_mass, tank.total_fluid_mass)
+        self.assertEqual(tank.tank_temp, 0.0)
+        self.assertEqual(tank.outlet_fluid_temp, 0.0)
+
+        # fully discharged tank
+        tank.init_state(latent_state_of_charge=0.0)
+        self.assertEqual(tank.ice_mass, 0.0)
+        self.assertEqual(tank.tank_temp, 0.0)
+        self.assertEqual(tank.outlet_fluid_temp, 0.0)
+
+        # warm tank
+        tank.init_state(tank_init_temp=20)
+        self.assertEqual(tank.ice_mass, 0.0)
+        self.assertEqual(tank.tank_temp, 20.0)
+        self.assertEqual(tank.outlet_fluid_temp, 20.0)
+
+        # sub-cooled tank
+        tank.init_state(tank_init_temp=-20.0)
+        self.assertEqual(tank.ice_mass, tank.total_fluid_mass)
+        self.assertEqual(tank.tank_temp, -20.0)
+        self.assertEqual(tank.outlet_fluid_temp, -20.0)

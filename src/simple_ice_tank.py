@@ -1,4 +1,5 @@
 from math import pi
+from typing import Optional, Union
 
 from CoolProp.CoolProp import PropsSI
 
@@ -49,9 +50,6 @@ class IceTank(object):
         self.fluid_str = "WATER"  # Water
         self.brine_str = "INCOMP::MPG[0.3]"  # Propylene Glycol - 30% by mass
 
-        # initial conditions
-        self.tank_temp = float(data["initial_temperature"])
-
         # geometry
         self.diameter = float(data["tank_diameter"])  # m
         self.height = float(data["tank_height"])  # m
@@ -63,14 +61,12 @@ class IceTank(object):
 
         # thermodynamics and heat transfer
         self.total_fluid_mass = self.fluid_volume * density(self.fluid_str, 20)  # kg
-        if self.tank_temp > 0:
-            self.ice_mass = 0.0  # kg
-        else:
-            self.ice_mass = self.total_fluid_mass
+        self.ice_mass = None
+        self.tank_temp = None
+        self.outlet_fluid_temp = None
         self.r_value_lid = float(data["r_value_lid"])  # m2-K/W
         self.r_value_base = float(data["r_value_base"])  # m2-K/W
         self.r_value_wall = float(data["r_value_wall"])  # m2-K/W
-        self.outlet_fluid_temp = self.tank_temp
 
         # TODO: convection coefficients should be different based on surface orientation
         h_i = 1000  # W/m2-K
@@ -84,6 +80,80 @@ class IceTank(object):
         # TODO: wall R-value should be considered as a radial resistance
         self.resist_conduction = 1 / ((1 / resist_lid) + (1 / resist_base) + (1 / resist_wall))  # K/W
         self.overall_ua = 1 / self.resist_conduction  # W/K
+
+        # time tracking
+        self.time = 0
+        self.time_prev = 0
+
+        # set initial conditions if passed to the ctor
+        if "initial_temperature" in data:
+            self.init_state(tank_init_temp=float(data["initial_temperature"]))
+        elif "latent_state_of_charge" in data:
+            self.init_state(latent_state_of_charge=float(data["latent_state_of_charge"]))
+
+    def init_state(self,
+                   latent_state_of_charge: Optional[Union[int, float]] = None,
+                   tank_init_temp: Optional[Union[int, float]] = None):
+        """
+        Initialize the state of the tank
+
+        :param latent_state_of_charge: latent state of charge for tank. Non-dimensional. Any real value 0-1.
+        Cannot be used in conjunction with 'tank_init_temp'.
+
+        :param tank_init_temp: bulk tank temperature. Degrees Celsius. Used to set the tank temperature.
+        Temperatures >= 0 deg C result in a state of charge (SOC) = 0. Temperatures < 0 deg C result in a SOC = 1.
+        Cannot be used in conjunction with 'latent_state_of_charge'.
+        """
+
+        # validate inputs
+        if latent_state_of_charge is not None and tank_init_temp is not None:
+            msg = "Can not set both 'latent_state_of_charge' and 'tank_init_temp'. Only one may be used."
+            raise IOError(msg)
+        elif latent_state_of_charge is None and tank_init_temp is None:
+            msg = "Must set either 'latent_state_of_charge' or 'tank_init_temp'."
+            raise IOError(msg)
+
+        # reset times
+        self.time = 0
+        self.time_prev = 0
+
+        # set state based on latent state of charge
+        if latent_state_of_charge is not None:
+            # set tank temperature
+            self.tank_temp = 0
+
+            # init outlet fluid temp
+            self.outlet_fluid_temp = 0
+
+            # bound latent charge state
+            latent_state_of_charge = float(max(0, min(1, latent_state_of_charge)))
+
+            # set state of charge
+            self.ice_mass = latent_state_of_charge * self.total_fluid_mass
+
+            # we're done
+            return
+
+        # set state if based on tank temperature
+        if tank_init_temp is not None:
+
+            # set tank temp
+            self.tank_temp = tank_init_temp
+
+            # init outlet fluid temp
+            self.outlet_fluid_temp = tank_init_temp
+
+            # set state of charge based on temperature
+            if tank_init_temp >= 0:
+                self.ice_mass = 0
+            else:
+                self.ice_mass = self.total_fluid_mass
+
+            # we're done
+            return
+
+        # we should never make it here
+        assert False  # pragma: no cover
 
     @property
     def liquid_mass(self):
