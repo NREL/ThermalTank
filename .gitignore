@@ -2,6 +2,8 @@
 cover/
 eplusout.*
 eplustbl.*
+eplus*.csv
+sqlite.err
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
