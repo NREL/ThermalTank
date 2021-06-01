@@ -1,5 +1,7 @@
 .idea/
 cover/
+eplusout.*
+eplustbl.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
