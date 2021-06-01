@@ -62,28 +62,29 @@ class IceTank(object):
         # thermodynamics and heat transfer
         self.total_fluid_mass = self.fluid_volume * density(self.fluid_str, 20)  # kg
         self.ice_mass = None
+        self.ice_mass_prev = None
         self.tank_temp = None
+        self.tank_temp_prev = None
         self.outlet_fluid_temp = None
         self.r_value_lid = float(data["r_value_lid"])  # m2-K/W
         self.r_value_base = float(data["r_value_base"])  # m2-K/W
         self.r_value_wall = float(data["r_value_wall"])  # m2-K/W
 
         # TODO: convection coefficients should be different based on surface orientation
-        h_i = 1000  # W/m2-K
-        h_o = 100  # W/m2-K
-        self.resist_inside = 1 / (h_i * self.area_total)  # K/W
-        self.resist_outside = 1 / (h_o * self.area_total)  # K/W
+        conv_coeff_inside_tank_wall = 1000  # W/m2-K
+        conv_coeff_outside_tank_wall = 100  # W/m2-K
+        self.resist_inside_tank_wall = 1 / (conv_coeff_inside_tank_wall * self.area_total)  # K/W
+        self.resist_outside_tank_wall = 1 / (conv_coeff_outside_tank_wall * self.area_total)  # K/W
         resist_lid = self.r_value_lid / self.area_lid  # K/W
         resist_base = self.r_value_base / self.area_base  # K/W
         resist_wall = self.r_value_wall / self.area_wall  # K/W
 
         # TODO: wall R-value should be considered as a radial resistance
-        self.resist_conduction = 1 / ((1 / resist_lid) + (1 / resist_base) + (1 / resist_wall))  # K/W
-        self.overall_ua = 1 / self.resist_conduction  # W/K
+        self.resist_conduction_tank_wall = 1 / ((1 / resist_lid) + (1 / resist_base) + (1 / resist_wall))  # K/W
+        self.tank_ua = 1 / self.resist_conduction_tank_wall  # W/K
 
         # time tracking
         self.time = 0
-        self.time_prev = 0
 
         # set initial conditions if passed to the ctor
         if "initial_temperature" in data:
@@ -115,12 +116,12 @@ class IceTank(object):
 
         # reset times
         self.time = 0
-        self.time_prev = 0
 
         # set state based on latent state of charge
         if latent_state_of_charge is not None:
             # set tank temperature
             self.tank_temp = 0
+            self.tank_temp_prev = self.tank_temp
 
             # init outlet fluid temp
             self.outlet_fluid_temp = 0
@@ -130,6 +131,7 @@ class IceTank(object):
 
             # set state of charge
             self.ice_mass = latent_state_of_charge * self.total_fluid_mass
+            self.ice_mass_prev = self.ice_mass
 
             # we're done
             return
@@ -139,6 +141,7 @@ class IceTank(object):
 
             # set tank temp
             self.tank_temp = tank_init_temp
+            self.tank_temp_prev = self.tank_temp
 
             # init outlet fluid temp
             self.outlet_fluid_temp = tank_init_temp
@@ -146,8 +149,10 @@ class IceTank(object):
             # set state of charge based on temperature
             if tank_init_temp >= 0:
                 self.ice_mass = 0
+                self.ice_mass_prev = self.ice_mass
             else:
                 self.ice_mass = self.total_fluid_mass
+                self.ice_mass_prev = self.ice_mass
 
             # we're done
             return
@@ -206,25 +211,24 @@ class IceTank(object):
         :return: heat transfer exchanged with tank, Joules
         """
 
-        if mass_flow_rate > 0:
-            q_max = self.q_brine_max(inlet_temp, mass_flow_rate, timestep)
-            return self.effectiveness(mass_flow_rate) * q_max
-        else:
+        # check for flow before proceeding
+        if mass_flow_rate <= 0.0:
             return 0.0
+
+        q_max = self.q_brine_max(inlet_temp, mass_flow_rate, timestep)
+        return self.effectiveness(mass_flow_rate) * q_max
 
     def q_env(self, env_temp: float, timestep: float):
         """
         Heat transfer exchange between environment
         Sign convention - positive for heat transfer into tank
 
-        # TODO: radiative effects are not considered, but are probably negligible
-
         :param env_temp: environment temperature, C
         :param timestep: simulation timestep, sec
         :return: heat transfer exchanged with tank, Joules
         """
 
-        return self.overall_ua * (env_temp - self.tank_temp) * timestep
+        return self.tank_ua * (env_temp - self.tank_temp) * timestep
 
     def compute_state(self, dq: float):
         """
@@ -302,7 +306,6 @@ class IceTank(object):
 
         # sensible subcooled ice charging
         if dq > 0:
-            # TODO: support something besides water
             cp_ice = 2030  # J/kg-K
             self.tank_temp += -dq / (self.total_fluid_mass * cp_ice)
 
@@ -369,24 +372,50 @@ class IceTank(object):
             cp_sens_liq = specific_heat(self.fluid_str, self.tank_temp)
             self.tank_temp += dq / (self.total_fluid_mass * cp_sens_liq)
 
-    def calculate_outlet_fluid_temp(self, inlet_temp, mass_flow_rate):
-        # TODO: fix this
-        # this is obviously really dumb right now, but if timestep's are small, we maybe can get away with this
+    def calculate_outlet_fluid_temp(self, inlet_temp: float, mass_flow_rate: float):
+        """
+        Computes the outlet fluid temperature based on the current state of the tank
+
+        :param inlet_temp: inlet temperature of the brine fluid, degrees Celsius
+        :param mass_flow_rate: mass flow rate of the brine fluid, kg/s
+        """
+
         return inlet_temp - self.effectiveness(mass_flow_rate) * (inlet_temp - self.tank_temp)
 
-    def calculate(self, inlet_temp: float, m_dot: float, env_temp: float, timestep: float):
+    def calculate(self, inlet_temp: float, mass_flow_rate: float, env_temp: float, sim_time: float, timestep: float):
+        """
+        Calculates the tank energy balance
+
+        :param inlet_temp: inlet temperature of the brine fluid, degrees Celsius
+        :param mass_flow_rate: mass flow rate of the brine fluid, kg/s
+        :param env_temp: environment temperature, degrees Celsius
+        :param sim_time: total elapsed simulation time, sec
+        :param timestep: timestep, sec
+        """
         # General governing equation
         # M_fluid du/dt = sum(q_env, q_brine)
 
+        # tank_temp and ice_mass are our state variables
+        # if time has advanced, we need to lock down the 'previous' state from the last iteration
+        # otherwise, we will set them to to previous state and then update assuming we're in an iteration
+
+        if sim_time > self.time:
+            self.time = sim_time
+            self.tank_temp_prev = self.tank_temp
+            self.ice_mass_prev = self.ice_mass
+        else:
+            self.tank_temp = self.tank_temp_prev
+            self.ice_mass = self.ice_mass_prev
+
         # right-hand side
         # sum(q_env * dt, q_brine * dt)
-        q_brine = self.q_brine(inlet_temp, m_dot, timestep)
+        q_brine = self.q_brine(inlet_temp, mass_flow_rate, timestep)
         q_env = self.q_env(env_temp, timestep)
         q_tot = q_brine + q_env
-
-        # update outlet temp before updating tank temp
-        self.outlet_fluid_temp = self.calculate_outlet_fluid_temp(inlet_temp, m_dot)
 
         # left-hand side
         # M_fluid du = M_fluid * (u_fluid - u_fluid_old)
         self.compute_state(q_tot)
+
+        # compute new outlet fluid temp
+        self.outlet_fluid_temp = self.calculate_outlet_fluid_temp(inlet_temp, mass_flow_rate)
