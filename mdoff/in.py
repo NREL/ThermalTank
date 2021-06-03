@@ -47,6 +47,7 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         self.mdot_out_hndl = None
 
         # global variable handles
+        self.bypass_frac_hndl = None
         self.soc_hndl = None
 
         # tank data
@@ -91,6 +92,7 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         self.mdot_out_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Mass Flow Rate', 'CHW Loop Ice Tank')
 
         # get global handles
+        self.bypass_frac_hndl = self.api.exchange.get_global_handle(state, "bypass_frac")
         self.soc_hndl = self.api.exchange.get_global_handle(state, "soc")
 
         self.need_to_get_handles = False
@@ -168,11 +170,28 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         else:
             load_act = load
 
-        # calc tank
+        # set current date/time
         dt = self.api.exchange.actual_date_time(state)
+
+        # determine tank outlet temp at full flow rate
         self.tank.calculate(t_in, mdot_act, 24, dt, 60)
         t_out = self.tank.outlet_fluid_temp
+        bypass_frac = 0
+
+        # find flow rate that results in setpoint if less at full flow
+        if t_out < t_set_icetank:
+            for i in range(1, 100):
+                mdot_tank = (1 - (i / 100)) * mdot_act
+                mdot_bypass = mdot_act - mdot_tank
+                bypass_frac = mdot_tank / mdot_act
+                self.tank.calculate(t_in, mdot_tank, 24, dt, 60)
+                t_tank = self.tank.outlet_fluid_temp
+                t_out = ((mdot_tank * t_tank) + (mdot_bypass * t_in)) / (mdot_tank + mdot_bypass)
+                if abs(t_out - t_set_icetank) < 0.1:
+                    break
+
         soc = self.tank.ice_mass / self.tank.total_fluid_mass
+        self.api.exchange.set_global_value(state, self.bypass_frac_hndl, bypass_frac)
         self.api.exchange.set_global_value(state, self.soc_hndl, soc)
 
         # set outlet actuators

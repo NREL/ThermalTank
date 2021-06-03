@@ -12947,7 +12947,7 @@ Schedule:Compact,
   Until: 12:00,                           !- Field 3
   6.7,                                    !- Field 4
   Until: 18:00,                           !- Field 5
-  8.7,                                    !- Field 6
+  9.7,                                    !- Field 6
   Until: 24:00,                           !- Field 7
   6.7;                                    !- Field 8
 
@@ -13019,9 +13019,17 @@ PythonPlugin:Instance,
   in,                                     !- Python Module Name
   UsrDefPlntCmpSim;                       !- Plugin Class Name
 
-  PythonPlugin:Variables,
-    Python Variables,                       !- Name
-    soc;                                    !- Variable Name 1
+PythonPlugin:Variables,
+  Python Variables,                       !- Name
+  bypass_frac,                            !- Variable Name 1
+  soc;                                    !- Variable Name 2
+
+PythonPlugin:OutputVariable,
+  bypass_frac,                            !- Name
+  bypass_frac,                            !- Python Plugin Variable Name
+  Averaged,                               !- Type of Data in Variable
+  SystemTimestep,                         !- Update Frequency
+  ;                                       !- Units
 
 PythonPlugin:OutputVariable,
   soc,                                    !- Name
@@ -13078,4 +13086,9 @@ Output:Variable,
 Output:Variable,
   soc,                                    !- Key Value
   PythonPlugin:OutputVariable,            !- Variable Name
-  Timestep,                               !- Reporting Frequency
+  Timestep;                               !- Reporting Frequency
+
+Output:Variable,
+  bypass_frac,                            !- Key Value
+  PythonPlugin:OutputVariable,            !- Variable Name
+  Timestep;                               !- Reporting Frequency
