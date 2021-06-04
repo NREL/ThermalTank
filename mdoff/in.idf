@@ -12796,7 +12796,7 @@ Chiller:Electric:EIR,
   AirCooled,                              !- Condenser Type
   ,                                       !- Condenser Fan Power Ratio {W/W}
   ,                                       !- Fraction of Compressor Electric Consumption Rejected by Condenser
-  2,                                      !- Leaving Chilled Water Lower Temperature Limit {C}
+  -10,                                    !- Leaving Chilled Water Lower Temperature Limit {C}
   LeavingSetpointModulated,               !- Chiller Flow Mode
   0;                                      !- Design Heat Recovery Water Flow Rate {m3/s}
 
@@ -12856,8 +12856,8 @@ PlantLoop,
   ,                                       !- User Defined Fluid Type
   CHW Loop Op Schemes,                    !- Plant Equipment Operation Scheme Name
   CHW Loop Supply Outlet Node,            !- Loop Temperature Setpoint Node Name
-  98,                                     !- Maximum Loop Temperature {C}
-  1,                                      !- Minimum Loop Temperature {C}
+  100,                                    !- Maximum Loop Temperature {C}
+  -50,                                    !- Minimum Loop Temperature {C}
   AutoSize,                               !- Maximum Loop Flow Rate {m3/s}
   0,                                      !- Minimum Loop Flow Rate {m3/s}
   AutoCalculate,                          !- Plant Loop Volume {m3}
@@ -12944,12 +12944,14 @@ Schedule:Compact,
   Temperature,                            !- Schedule Type Limits Name
   Through:12/31,                          !- Field 1
   For:AllDays,                            !- Field 2
-  Until: 12:00,                           !- Field 3
-  6.7,                                    !- Field 4
-  Until: 18:00,                           !- Field 5
-  9.7,                                    !- Field 6
-  Until: 24:00,                           !- Field 7
-  6.7;                                    !- Field 8
+  Until: 10:00,                           !- Field 3
+  -5,                                     !- Field 4
+  Until: 12:00,                           !- Field 5
+  6.7,                                    !- Field 6
+  Until: 18:00,                           !- Field 7
+  9.7,                                    !- Field 8
+  Until: 24:00,                           !- Field 9
+  6.7;                                    !- Field 10
 
 Schedule:Compact,
   Ice Tank Temp Sch,                      !- Name

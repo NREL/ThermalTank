@@ -99,7 +99,7 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
 
     # reinitialize tank after warmup
     def on_new_environment_warmup_complete(self, state) -> int:
-        self.tank.init_state(tank_init_temp=-20)
+        self.tank.init_state(tank_init_temp=15)
         return 0
 
     def on_user_defined_component_model(self, state) -> int:
@@ -145,12 +145,6 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         self.api.exchange.set_actuator_value(state, self.load_max_hndl, cap_loop)
         self.api.exchange.set_actuator_value(state, self.load_opt_hndl, cap_loop)
 
-        # pass-through if no load
-        if t_set_chiller == t_set_icetank:
-            self.api.exchange.set_actuator_value(state, self.t_out_hndl, t_in)
-            self.api.exchange.set_actuator_value(state, self.mdot_out_hndl, mdot_in)
-            return 0
-
         # determine flow rate
         mdot_max = mdot_loop
         if mdot_in == 0:
@@ -170,25 +164,38 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         else:
             load_act = load
 
-        # set current date/time
+        # set current date/time and init bypass fraction
         dt = self.api.exchange.actual_date_time(state)
-
-        # determine tank outlet temp at full flow rate
-        self.tank.calculate(t_in, mdot_act, 24, dt, 60)
-        t_out = self.tank.outlet_fluid_temp
         bypass_frac = 0
 
-        # find flow rate that results in setpoint if less at full flow
-        if t_out < t_set_icetank:
-            for i in range(1, 100):
-                mdot_tank = (1 - (i / 100)) * mdot_act
-                mdot_bypass = mdot_act - mdot_tank
-                bypass_frac = mdot_tank / mdot_act
-                self.tank.calculate(t_in, mdot_tank, 24, dt, 60)
-                t_tank = self.tank.outlet_fluid_temp
-                t_out = ((mdot_tank * t_tank) + (mdot_bypass * t_in)) / (mdot_tank + mdot_bypass)
-                if abs(t_out - t_set_icetank) < 0.1:
-                    break
+        # charge
+        if t_set_chiller < t_set_icetank:
+            self.tank.calculate(t_in, mdot_act, 24, dt, 60)
+            t_out = self.tank.outlet_fluid_temp
+
+        # pass-through if no load
+        elif t_set_chiller == t_set_icetank:
+            self.api.exchange.set_actuator_value(state, self.t_out_hndl, t_in)
+            self.api.exchange.set_actuator_value(state, self.mdot_out_hndl, mdot_in)
+            return 0
+
+        # determine tank outlet temp at full flow rate
+        else:
+            self.tank.calculate(t_in, mdot_act, 24, dt, 60)
+            t_out = self.tank.outlet_fluid_temp
+
+
+            # find flow rate that results in setpoint if less at full flow
+            if t_out < t_set_icetank:
+                for i in range(1, 100):
+                    mdot_tank = (1 - (i / 100)) * mdot_act
+                    mdot_bypass = mdot_act - mdot_tank
+                    bypass_frac = mdot_tank / mdot_act
+                    self.tank.calculate(t_in, mdot_tank, 24, dt, 60)
+                    t_tank = self.tank.outlet_fluid_temp
+                    t_out = ((mdot_tank * t_tank) + (mdot_bypass * t_in)) / (mdot_tank + mdot_bypass)
+                    if abs(t_out - t_set_icetank) < 0.1:
+                        break
 
         soc = self.tank.ice_mass / self.tank.total_fluid_mass
         self.api.exchange.set_global_value(state, self.bypass_frac_hndl, bypass_frac)
