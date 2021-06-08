@@ -160,6 +160,12 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         self.api.exchange.set_actuator_value(state, self.load_max_hndl, cap_loop)
         self.api.exchange.set_actuator_value(state, self.load_opt_hndl, cap_loop)
 
+        # pass-through if warmup
+        if self.api.exchange.warmup_flag(state):
+            self.api.exchange.set_actuator_value(state, self.t_out_hndl, t_in)
+            self.api.exchange.set_actuator_value(state, self.mdot_out_hndl, mdot_in)
+            return 0
+
         # determine flow rate
         mdot_max = mdot_loop
         if mdot_in == 0:
