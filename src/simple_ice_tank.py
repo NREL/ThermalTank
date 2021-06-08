@@ -169,6 +169,10 @@ class IceTank(object):
         """
         return self.total_fluid_mass - self.ice_mass
 
+    @property
+    def state_of_charge(self):
+        return min(max(1 - self.liquid_mass / self.total_fluid_mass, 0), 1)
+
     @staticmethod
     def effectiveness(mass_flow_rate):
         """
@@ -398,6 +402,8 @@ class IceTank(object):
         # tank_temp and ice_mass are our state variables
         # if time has advanced, we need to lock down the 'previous' state from the last iteration
         # otherwise, we will set them to to previous state and then update assuming we're in an iteration
+
+        print(f"SimTime: {sim_time}; self.time: {self.time}")
 
         if sim_time > self.time:
             self.time = sim_time

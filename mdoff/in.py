@@ -1,6 +1,6 @@
 from pyenergyplus.plugin import EnergyPlusPlugin
-from CoolProp.CoolProp import PropsSI
 from simple_ice_tank import IceTank
+
 
 class UsrDefPlntCmpSet(EnergyPlusPlugin):
 
@@ -10,8 +10,8 @@ class UsrDefPlntCmpSet(EnergyPlusPlugin):
     def on_user_defined_component_model(self, state) -> int:
         return 0
 
-class UsrDefPlntCmpSim(EnergyPlusPlugin):
 
+class UsrDefPlntCmpSim(EnergyPlusPlugin):
     loop_exit_temp = 6.7
     loop_delt_temp = 8.33
 
@@ -71,25 +71,41 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         self.t_set_icetank_hndl = self.api.exchange.get_variable_handle(state, 'Schedule Value', 'Ice Tank Temp Sch')
 
         # get loop internal variable handle
-        self.vdot_loop_hndl = self.api.exchange.get_internal_variable_handle(state, 'Plant Design Volume Flow Rate', 'CHW Loop')
+        self.vdot_loop_hndl = self.api.exchange.get_internal_variable_handle(state, 'Plant Design Volume Flow Rate',
+                                                                             'CHW Loop')
 
         # get component internal variable handles
-        self.t_in_hndl = self.api.exchange.get_internal_variable_handle(state, 'Inlet Temperature for Plant Connection 1', 'CHW Loop Ice Tank')
-        self.mdot_in_hndl = self.api.exchange.get_internal_variable_handle(state, 'Inlet Mass Flow Rate for Plant Connection 1', 'CHW Loop Ice Tank')
-        self.cp_in_hndl = self.api.exchange.get_internal_variable_handle(state, 'Inlet Specific Heat for Plant Connection 1', 'CHW Loop Ice Tank')
-        self.load_in_hndl = self.api.exchange.get_internal_variable_handle(state, 'Load Request for Plant Connection 1', 'CHW Loop Ice Tank')
+        self.t_in_hndl = self.api.exchange.get_internal_variable_handle(state,
+                                                                        'Inlet Temperature for Plant Connection 1',
+                                                                        'CHW Loop Ice Tank')
+        self.mdot_in_hndl = self.api.exchange.get_internal_variable_handle(state,
+                                                                           'Inlet Mass Flow Rate for Plant Connection 1',
+                                                                           'CHW Loop Ice Tank')
+        self.cp_in_hndl = self.api.exchange.get_internal_variable_handle(state,
+                                                                         'Inlet Specific Heat for Plant Connection 1',
+                                                                         'CHW Loop Ice Tank')
+        self.load_in_hndl = self.api.exchange.get_internal_variable_handle(state, 'Load Request for Plant Connection 1',
+                                                                           'CHW Loop Ice Tank')
 
         # get setup actuator handles
-        self.mdot_min_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Minimum Mass Flow Rate', 'CHW Loop Ice Tank')
-        self.mdot_max_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Maximum Mass Flow Rate', 'CHW Loop Ice Tank')
-        self.vdot_des_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Design Volume Flow Rate', 'CHW Loop Ice Tank')
-        self.load_min_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Minimum Loading Capacity', 'CHW Loop Ice Tank')
-        self.load_max_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Maximum Loading Capacity', 'CHW Loop Ice Tank')
-        self.load_opt_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Optimal Loading Capacity', 'CHW Loop Ice Tank')
+        self.mdot_min_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1',
+                                                                   'Minimum Mass Flow Rate', 'CHW Loop Ice Tank')
+        self.mdot_max_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1',
+                                                                   'Maximum Mass Flow Rate', 'CHW Loop Ice Tank')
+        self.vdot_des_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1',
+                                                                   'Design Volume Flow Rate', 'CHW Loop Ice Tank')
+        self.load_min_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1',
+                                                                   'Minimum Loading Capacity', 'CHW Loop Ice Tank')
+        self.load_max_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1',
+                                                                   'Maximum Loading Capacity', 'CHW Loop Ice Tank')
+        self.load_opt_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1',
+                                                                   'Optimal Loading Capacity', 'CHW Loop Ice Tank')
 
         # get sim actuator handles
-        self.t_out_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Outlet Temperature', 'CHW Loop Ice Tank')
-        self.mdot_out_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Mass Flow Rate', 'CHW Loop Ice Tank')
+        self.t_out_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Outlet Temperature',
+                                                                'CHW Loop Ice Tank')
+        self.mdot_out_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Mass Flow Rate',
+                                                                   'CHW Loop Ice Tank')
 
         # get global handles
         self.bypass_frac_hndl = self.api.exchange.get_global_handle(state, "bypass_frac")
@@ -98,8 +114,10 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         self.need_to_get_handles = False
 
     # reinitialize tank after warmup
-    def on_new_environment_warmup_complete(self, state) -> int:
+    def on_after_new_environment_warmup_is_complete(self, state) -> int:
+        print("on_after_new_environment_warmup_is_complete")
         self.tank.init_state(tank_init_temp=15)
+        print(self.tank.state_of_charge)
         return 0
 
     def on_user_defined_component_model(self, state) -> int:
@@ -108,13 +126,10 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         if not self.api.exchange.api_data_fully_ready(state):
             return 0
 
-        # init glycol
-        if not self.glycol:
-            self.glycol = self.api.functional.glycol(state, u'water')
-
         # get handles
         if self.need_to_get_handles:
             self.get_handles(state)
+            self.glycol = self.api.functional.glycol(state, u'water')
 
         # get setpoint schedule values
         t_set_chiller = self.api.exchange.get_variable_value(state, self.t_set_chiller_hndl)
@@ -184,7 +199,6 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
             self.tank.calculate(t_in, mdot_act, 24, dt, 60)
             t_out = self.tank.outlet_fluid_temp
 
-
             # find flow rate that results in setpoint if less at full flow
             if t_out < t_set_icetank:
                 for i in range(1, 100):
@@ -197,7 +211,7 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
                     if abs(t_out - t_set_icetank) < 0.1:
                         break
 
-        soc = self.tank.ice_mass / self.tank.total_fluid_mass
+        soc = self.tank.state_of_charge
         self.api.exchange.set_global_value(state, self.bypass_frac_hndl, bypass_frac)
         self.api.exchange.set_global_value(state, self.soc_hndl, soc)
 
