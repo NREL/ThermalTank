@@ -384,6 +384,9 @@ class IceTank(object):
         :param mass_flow_rate: mass flow rate of the brine fluid, kg/s
         """
 
+        if mass_flow_rate <= 0.0:
+            return inlet_temp
+
         return inlet_temp - self.effectiveness(mass_flow_rate) * (inlet_temp - self.tank_temp)
 
     def calculate(self, inlet_temp: float, mass_flow_rate: float, env_temp: float, sim_time: float, timestep: float):
