@@ -403,8 +403,6 @@ class IceTank(object):
         # if time has advanced, we need to lock down the 'previous' state from the last iteration
         # otherwise, we will set them to to previous state and then update assuming we're in an iteration
 
-        print(f"SimTime: {sim_time}; self.time: {self.time}")
-
         if sim_time > self.time:
             self.time = sim_time
             self.tank_temp_prev = self.tank_temp

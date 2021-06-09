@@ -115,9 +115,7 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
 
     # reinitialize tank after warmup
     def on_after_new_environment_warmup_is_complete(self, state) -> int:
-        print("on_after_new_environment_warmup_is_complete")
         self.tank.init_state(tank_init_temp=15)
-        print(self.tank.state_of_charge)
         return 0
 
     def on_user_defined_component_model(self, state) -> int:
@@ -186,7 +184,7 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
             load_act = load
 
         # set current date/time and init bypass fraction
-        dt = self.api.exchange.actual_date_time(state)
+        dt = self.api.exchange.day_of_year(state) * 24 + self.api.exchange.current_time(state)
         bypass_frac = 0
 
         # charge
