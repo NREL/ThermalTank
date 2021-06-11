@@ -111,7 +111,7 @@ class IceTank(object):
 
         # TODO: wall R-value should be considered as a radial resistance
         self.resist_conduction_tank_wall = 1 / ((1 / resist_lid) + (1 / resist_base) + (1 / resist_wall))  # K/W
-        self.tank_ua = 1 / self.resist_conduction_tank_wall  # W/K
+        self.tank_ua_env = 1 / self.resist_conduction_tank_wall  # W/K
 
         # time tracking
         self.time = 0
@@ -221,7 +221,7 @@ class IceTank(object):
 
         # linear portion
         max_degradation_linear = 1.0
-        min_degradation_linear = 0.7
+        min_degradation_linear = 0.75
         degradation_slope = (max_degradation_linear - min_degradation_linear) / (1 - piecewise_cutoff)
         degradation_intercept = max_degradation_linear - degradation_slope
 
@@ -247,26 +247,30 @@ class IceTank(object):
         soc = self.state_of_charge
 
         # linear data
-        max_degradation_linear = 1.0
+        max_degradation_linear = 0.9
         min_degradation_linear = 1.2
         degradation_slope = (max_degradation_linear - min_degradation_linear)  # / 1
         degradation_intercept = max_degradation_linear - degradation_slope
 
         return degradation_slope * soc + degradation_intercept
 
-    def effectiveness(self, mass_flow_rate: float):
+    def effectiveness(self, temperature: float, mass_flow_rate: float):
         """
         Simple correlation for mass flow rate to effectiveness
 
+        :param temperature: temperature, C
         :param mass_flow_rate: mass flow rate, kg/s
         :return: effectiveness, non-dimensional
         """
 
+        # check for flow before proceeding
+        if mass_flow_rate <= 0.0:
+            return 1
+
         # set effectiveness due to mass flow effects
-        # TODO: try infinite capacity e = f(NTU)
-        min_effectiveness = 0.3
-        max_effectiveness = 0.95
-        effectiveness = min(max(-0.125 * mass_flow_rate + 1.225, min_effectiveness), max_effectiveness)
+        tank_ua_hx = 20000
+        num_transfer_units = tank_ua_hx / (mass_flow_rate * specific_heat(self.brine_str, temperature))
+        effectiveness = 1 - exp(-num_transfer_units)
 
         # set effectiveness due to state of charge effects
         # no change in effectiveness due to state of charge when charging
@@ -308,7 +312,7 @@ class IceTank(object):
             return 0.0
 
         q_max = self.q_brine_max(inlet_temp, mass_flow_rate, timestep)
-        return self.effectiveness(mass_flow_rate) * q_max
+        return self.effectiveness(inlet_temp, mass_flow_rate) * q_max
 
     def q_env(self, env_temp: float, timestep: float):
         """
@@ -320,7 +324,7 @@ class IceTank(object):
         :return: heat transfer exchanged with tank, Joules
         """
 
-        return self.tank_ua * (env_temp - self.tank_temp) * timestep
+        return self.tank_ua_env * (env_temp - self.tank_temp) * timestep
 
     def compute_state(self, dq: float):
         """
@@ -474,10 +478,11 @@ class IceTank(object):
         :param mass_flow_rate: mass flow rate of the brine fluid, kg/s
         """
 
+        # check for flow before proceeding
         if mass_flow_rate <= 0.0:
             return inlet_temp
 
-        return inlet_temp - self.effectiveness(mass_flow_rate) * (inlet_temp - self.tank_temp)
+        return inlet_temp - self.effectiveness(inlet_temp, mass_flow_rate) * (inlet_temp - self.tank_temp)
 
     def calculate(self, inlet_temp: float, mass_flow_rate: float, env_temp: float, sim_time: float, timestep: float):
         """
