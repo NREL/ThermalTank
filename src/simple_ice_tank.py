@@ -1,7 +1,37 @@
-from math import pi
+from math import pi, exp
 from typing import Optional, Union
 
 from CoolProp.CoolProp import PropsSI
+
+
+def smoothing_function(x: float, x_min: float, x_max: float, y_min: float, y_max: float) -> float:
+    """
+    Uses a sigmoid function to smooth based on the argument bounds
+
+    https://en.wikipedia.org/wiki/Sigmoid_function
+
+    :param x: independent variable
+    :param x_min: minimum value of x
+    :param x_max: maximum value of x
+    :param y_min: minimum value of y
+    :param y_max: maximum value of y
+    :return: smoothed float between y_min and y_max
+    """
+
+    if x < x_min:
+        return y_min
+    elif x > x_max:
+        return y_max
+    else:
+        x_normalized = (x - x_min) / (x_max - x_min)
+
+    # scales x = [0, 1] to [-6, 6]
+    x_sig = 16.0 * x_normalized + -8.0
+
+    # compute sigmoid
+    y_sig = 1 / (1 + exp(-x_sig))
+
+    return (y_max - y_min) * y_sig + y_min
 
 
 def c_to_k(temp):
@@ -92,6 +122,9 @@ class IceTank(object):
         elif "latent_state_of_charge" in data:
             self.init_state(latent_state_of_charge=float(data["latent_state_of_charge"]))
 
+        # other
+        self.tank_is_charging = None
+
     def init_state(self,
                    latent_state_of_charge: Optional[Union[int, float]] = None,
                    tank_init_temp: Optional[Union[int, float]] = None):
@@ -171,10 +204,57 @@ class IceTank(object):
 
     @property
     def state_of_charge(self):
+        """
+        Computes the state of charge, base on the ratio of ice mass to total mass
+        """
         return min(max(1 - self.liquid_mass / self.total_fluid_mass, 0), 1)
 
-    @staticmethod
-    def effectiveness(mass_flow_rate):
+    def effectiveness_soc_degradation_discharging(self):
+        """
+        Effectiveness modifier due to state of charge for discharging mode
+        """
+
+        soc = self.state_of_charge
+
+        # piecewise degradation function for state of charge
+        piecewise_cutoff = 0.25
+
+        # linear portion
+        max_degradation_linear = 1.0
+        min_degradation_linear = 0.7
+        degradation_slope = (max_degradation_linear - min_degradation_linear) / (1 - piecewise_cutoff)
+        degradation_intercept = max_degradation_linear - degradation_slope
+
+        # sigmoid portion
+        max_degradation_sig = min_degradation_linear
+        min_degradation_sig = 0.2
+
+        if soc > piecewise_cutoff:
+            return degradation_slope * soc + degradation_intercept
+        else:
+            soc_degradation = smoothing_function(soc,
+                                                 0,
+                                                 piecewise_cutoff,
+                                                 min_degradation_sig,
+                                                 max_degradation_sig)
+            return min(max(soc_degradation, min_degradation_sig), max_degradation_sig)
+
+    def effectiveness_soc_degradation_charging(self):
+        """
+        Effectiveness modifier due to state of charge for discharging mode
+        """
+
+        soc = self.state_of_charge
+
+        # linear data
+        max_degradation_linear = 1.0
+        min_degradation_linear = 1.2
+        degradation_slope = (max_degradation_linear - min_degradation_linear)  # / 1
+        degradation_intercept = max_degradation_linear - degradation_slope
+
+        return degradation_slope * soc + degradation_intercept
+
+    def effectiveness(self, mass_flow_rate: float):
         """
         Simple correlation for mass flow rate to effectiveness
 
@@ -182,10 +262,18 @@ class IceTank(object):
         :return: effectiveness, non-dimensional
         """
 
+        # set effectiveness due to mass flow effects
+        # TODO: try infinite capacity e = f(NTU)
         min_effectiveness = 0.3
         max_effectiveness = 0.95
+        effectiveness = min(max(-0.125 * mass_flow_rate + 1.225, min_effectiveness), max_effectiveness)
 
-        return max(min_effectiveness, min(max_effectiveness, -0.125 * mass_flow_rate + 1.225))
+        # set effectiveness due to state of charge effects
+        # no change in effectiveness due to state of charge when charging
+        if self.tank_is_charging:
+            return effectiveness * self.effectiveness_soc_degradation_charging()
+        else:
+            return effectiveness * self.effectiveness_soc_degradation_discharging()
 
     def q_brine_max(self, inlet_temp: float, mass_flow_rate: float, timestep: float):
         """
@@ -245,8 +333,10 @@ class IceTank(object):
 
         if dq < 0:
             self.compute_charging(dq)
+            self.tank_is_charging = True
         else:
             self.compute_discharging(dq)
+            self.tank_is_charging = False
 
     def compute_charging(self, dq: float):
         """

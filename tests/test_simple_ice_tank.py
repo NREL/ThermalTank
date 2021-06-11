@@ -1,6 +1,6 @@
 import unittest
 
-from src.simple_ice_tank import IceTank
+from src.simple_ice_tank import IceTank, smoothing_function
 
 
 class TestSimpleIceTank(unittest.TestCase):
@@ -289,13 +289,47 @@ class TestSimpleIceTank(unittest.TestCase):
         self.assertAlmostEqual(tank.state_of_charge, 0.0, delta=0.01)
 
     def test_effectiveness(self):
+        # charging mode
         tank = IceTank(self.data)
-        self.assertAlmostEqual(tank.effectiveness(0), 0.95, delta=0.01)
+        # tank.tank_is_charging = True
+        # self.assertAlmostEqual(tank.effectiveness(0), 0.95, delta=0.01)
+        # self.assertAlmostEqual(tank.effectiveness(1), 0.95, delta=0.01)
+        # self.assertAlmostEqual(tank.effectiveness(2), 0.95, delta=0.01)
+        # self.assertAlmostEqual(tank.effectiveness(3), 0.85, delta=0.01)
+        # self.assertAlmostEqual(tank.effectiveness(4), 0.72, delta=0.01)
+        # self.assertAlmostEqual(tank.effectiveness(5), 0.6, delta=0.01)
+
+        # discharging mode
+        tank.tank_is_charging = False
+        # soc = 1.0
+        # tank.ice_mass = tank.total_fluid_mass * soc
+        # self.assertAlmostEqual(tank.effectiveness(1), 0.95, delta=0.01)
+
+        # soc = 0.9
+        # tank.ice_mass = tank.total_fluid_mass * soc
+        # self.assertAlmostEqual(tank.effectiveness(1), 0.92, delta=0.01)
+
+        # soc = 0.3
+        # tank.ice_mass = tank.total_fluid_mass * soc
+        # self.assertAlmostEqual(tank.effectiveness(1), 0.72, delta=0.01)
+
+        # soc = 0.14
+        # tank.ice_mass = tank.total_fluid_mass * soc
+        # self.assertAlmostEqual(tank.effectiveness(1), 0.66, delta=0.01)
+
+        # soc = 0.075
+        # tank.ice_mass = tank.total_fluid_mass * soc
+        # self.assertAlmostEqual(tank.effectiveness(1), 0.43, delta=0.01)
+
+        # soc = 0.01
+        # tank.ice_mass = tank.total_fluid_mass * soc
+        # self.assertAlmostEqual(tank.effectiveness(1), 0.19, delta=0.01)
+
+        # charging mode
+        tank.tank_is_charging = True
+        tank.ice_mass = 0.0
+
         self.assertAlmostEqual(tank.effectiveness(1), 0.95, delta=0.01)
-        self.assertAlmostEqual(tank.effectiveness(2), 0.95, delta=0.01)
-        self.assertAlmostEqual(tank.effectiveness(3), 0.85, delta=0.01)
-        self.assertAlmostEqual(tank.effectiveness(4), 0.72, delta=0.01)
-        self.assertAlmostEqual(tank.effectiveness(5), 0.6, delta=0.01)
 
     def test_init_state(self):
         # uninitialized tank
@@ -336,3 +370,67 @@ class TestSimpleIceTank(unittest.TestCase):
         self.assertEqual(tank.ice_mass, tank.total_fluid_mass)
         self.assertEqual(tank.tank_temp, -20.0)
         self.assertEqual(tank.outlet_fluid_temp, -20.0)
+
+    def test_smoothing_function(self):
+        # basic test, x bounded from [0, 1], y bounded from [0, 1]
+        # x = 0
+        args = [0, 0, 1, 0, 1]
+        self.assertAlmostEqual(smoothing_function(*args), 0.0, delta=0.01)
+
+        # x = 1
+        args = [1, 0, 1, 0, 1]
+        self.assertAlmostEqual(smoothing_function(*args), 1.0, delta=0.01)
+
+        # x = 0.5
+        args = [0.5, 0, 1, 0, 1]
+        self.assertAlmostEqual(smoothing_function(*args), 0.5, delta=0.01)
+
+        # x = -10
+        args = [-10, 0, 1, 0, 1]
+        self.assertAlmostEqual(smoothing_function(*args), 0.0, delta=0.01)
+
+        # x = 10
+        args = [10, 0, 1, 0, 1]
+        self.assertAlmostEqual(smoothing_function(*args), 1.0, delta=0.01)
+
+        # x bounded from [0, 1], y bounded from [0, 10]
+        # x = 0
+        args = [0, 0, 1, 0, 10]
+        self.assertAlmostEqual(smoothing_function(*args), 0.0, delta=0.01)
+
+        # x = 1
+        args = [1, 0, 1, 0, 10]
+        self.assertAlmostEqual(smoothing_function(*args), 10, delta=0.01)
+
+        # x = 0.5
+        args = [0.5, 0, 1, 0, 10]
+        self.assertAlmostEqual(smoothing_function(*args), 5.0, delta=0.01)
+
+        # x = -10
+        args = [-10, 0, 1, 0, 10]
+        self.assertAlmostEqual(smoothing_function(*args), 0.0, delta=0.01)
+
+        # x = 10
+        args = [10, 0, 1, 0, 10]
+        self.assertAlmostEqual(smoothing_function(*args), 10.0, delta=0.01)
+
+        # x bounded from [0, 10], y bounded from [0, 1]
+        # x = 0
+        args = [0, 0, 10, 0, 1]
+        self.assertAlmostEqual(smoothing_function(*args), 0.0, delta=0.01)
+
+        # x = 10
+        args = [10, 0, 10, 0, 1]
+        self.assertAlmostEqual(smoothing_function(*args), 1.0, delta=0.01)
+
+        # x = 5
+        args = [5, 0, 10, 0, 1]
+        self.assertAlmostEqual(smoothing_function(*args), 0.5, delta=0.01)
+
+        # x = -10
+        args = [-10, 0, 10, 0, 1]
+        self.assertAlmostEqual(smoothing_function(*args), 0.0, delta=0.01)
+
+        # x = 10
+        args = [10, 0, 10, 0, 1]
+        self.assertAlmostEqual(smoothing_function(*args), 1.0, delta=0.01)
