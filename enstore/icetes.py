@@ -21,9 +21,12 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         self.need_to_get_handles = True
         self.glycol = None
 
-        # setpoint schedule handles
-        self.t_set_chiller_hndl = None
+        # schedule handles
+        self.chrg_sch_hndl = None
         self.t_set_icetank_hndl = None
+
+        # setpoint schedule actuator handle
+        self.t_set_chiller_hndl = None
 
         # loop internal variable handle
         self.vdot_loop_hndl = None
@@ -66,9 +69,12 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
 
     def get_handles(self, state):
 
-        # get setpoint schedule handles
-        self.t_set_chiller_hndl = self.api.exchange.get_variable_handle(state, 'Schedule Value', 'Chiller Temp Sch')
+        # get schedule handles
+        self.chrg_sch_hndl = self.api.exchange.get_variable_handle(state, 'Schedule Value', 'Charge Sch')
         self.t_set_icetank_hndl = self.api.exchange.get_variable_handle(state, 'Schedule Value', 'Ice Tank Temp Sch')
+
+        # get chiller setpoint schedule actuator handles
+        self.t_set_chiller_hndl = self.api.exchange.get_actuator_handle(state, 'Schedule:Compact', 'Schedule Value', 'Chiller Temp Sch')
 
         # get loop internal variable handle
         self.vdot_loop_hndl = self.api.exchange.get_internal_variable_handle(state, 'Plant Design Volume Flow Rate','CHW Loop')
@@ -113,8 +119,8 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
             self.get_handles(state)
             self.glycol = self.api.functional.glycol(state, u'water')
 
-        # get setpoint schedule values
-        t_set_chiller = self.api.exchange.get_variable_value(state, self.t_set_chiller_hndl)
+        # get charge schedule values
+        chrg_sch = self.api.exchange.get_variable_value(state, self.chrg_sch_hndl)
         t_set_icetank = self.api.exchange.get_variable_value(state, self.t_set_icetank_hndl)
 
         # get loop internal variable values
@@ -173,23 +179,28 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         bypass_frac = 0
 
         # charge
-        if t_set_chiller < t_set_icetank:
+        if chrg_sch == 1:
             # bypass is SOC = 1
             if self.tank.state_of_charge == 1:
+                self.api.exchange.set_actuator_value(state, self.t_set_chiller_hndl, 6.7)
                 self.api.exchange.set_actuator_value(state, self.t_out_hndl, t_in)
-                self.api.exchange.set_actuator_value(state, self.mdot_out_hndl, mdot_in)
+                self.api.exchange.set_actuator_value(state, self.mdot_out_hndl, mdot_act)
+                return 0
             else:
+                self.api.exchange.set_actuator_value(state, self.t_set_chiller_hndl, -3.8)
                 self.tank.calculate(t_in, mdot_act, 24, dt, 60)
                 t_out = self.tank.outlet_fluid_temp
 
         # pass-through if no load
-        elif t_set_chiller == t_set_icetank:
+        elif chrg_sch == 0:
+            self.api.exchange.set_actuator_value(state, self.t_set_chiller_hndl, 6.7)
             self.api.exchange.set_actuator_value(state, self.t_out_hndl, t_in)
-            self.api.exchange.set_actuator_value(state, self.mdot_out_hndl, mdot_in)
+            self.api.exchange.set_actuator_value(state, self.mdot_out_hndl, mdot_act)
             return 0
 
         # determine tank outlet temp at full flow rate
-        else:
+        elif chrg_sch == -1:
+            self.api.exchange.set_actuator_value(state, self.t_set_chiller_hndl, 10)
             self.tank.calculate(t_in, mdot_act, 24, dt, 60)
             t_out = self.tank.outlet_fluid_temp
 

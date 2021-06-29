@@ -12808,20 +12808,28 @@ Curve:Quadratic,
   1;                                      !- Maximum Value of x {BasedOnField A2}
 
 Schedule:Compact,
+  Charge Sch,                             !- Name
+  Any Number,                             !- Schedule Type Limits Name
+  Through: 12/31,                         !- Field 1
+  For: AllDays,                           !- Field 2
+  Until: 11:00,                           !- Field 3
+  1,                                      !- Field 4
+  Until: 12:00,                           !- Field 5
+  0,                                      !- Field 6
+  Until: 18:00,                           !- Field 7
+  -1,                                     !- Field 8
+  Until: 23:00,                           !- Field 9
+  0,                                      !- Field 10
+  Until: 24:00,                           !- Field 11
+  1;                                      !- Field 12
+
+Schedule:Compact,
   Chiller Temp Sch,                       !- Name
   Temperature,                            !- Schedule Type Limits Name
   Through: 12/31,                         !- Field 1
   For: AllDays,                           !- Field 2
-  Until: 11:00,                           !- Field 3
-  -3.8,                                   !- Field 4
-  Until: 12:00,                           !- Field 5
-  6.7,                                    !- Field 6
-  Until: 18:00,                           !- Field 7
-  9.7,                                    !- Field 8
-  Until: 22:00,                           !- Field 9
-  -3.8,                                   !- Field 10
-  Until: 24:00,                           !- Field 11
-  -3.8;                                   !- Field 12
+  Until: 24:00,                           !- Field 3
+  6.7;                                    !- Field 4
 
 Schedule:Compact,
   Ice Tank Temp Sch,                      !- Name
@@ -12850,7 +12858,7 @@ PlantComponent:UserDefined,
   CHW Loop Ice Tank Inlet Node,           !- Plant Connection 1 Inlet Node Name
   CHW Loop Supply Equipment Outlet Node,  !- Plant Connection 1 Outlet Node Name
   MeetsLoadWithNominalCapacityLowOutLimit, !- Plant Connection 1 Loading Mode
-  NeedsFlowIfLoopOn,                      !- Plant Connection 1 Loop Flow Request Mode
+  NeedsFlowAndTurnsLoopOn,                !- Plant Connection 1 Loop Flow Request Mode
   CHW Loop Ice Tank Set Prgm,             !- Plant Connection 1 Initialization Program Calling Manager Name
   CHW Loop Ice Tank Sim Prgm,             !- Plant Connection 1 Simulation Program Calling Manager Name
   ,                                       !- Plant Connection 2 Inlet Node Name
@@ -12939,6 +12947,11 @@ PythonPlugin:OutputVariable,
 Output:Variable,
   soc,                                    !- Key Value
   PythonPlugin:OutputVariable,            !- Variable Name
+  Timestep;                               !- Reporting Frequency
+
+Output:Variable,
+  Charge Sch,                             !- Key Value
+  Schedule Value,                         !- Variable Name
   Timestep;                               !- Reporting Frequency
 
 Output:Variable,
@@ -13215,4 +13228,3 @@ Output:Meter,
 Output:Meter,
   DistrictHeating:Facility,               !- Key Name
   Timestep;                               !- Reporting Frequency
-
