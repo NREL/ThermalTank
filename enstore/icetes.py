@@ -74,28 +74,45 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         self.t_set_icetank_hndl = self.api.exchange.get_variable_handle(state, 'Schedule Value', 'Ice Tank Temp Sch')
 
         # get chiller setpoint schedule actuator handles
-        self.t_set_chiller_hndl = self.api.exchange.get_actuator_handle(state, 'Schedule:Compact', 'Schedule Value', 'Chiller Temp Sch')
+        self.t_set_chiller_hndl = self.api.exchange.get_actuator_handle(state, 'Schedule:Compact', 'Schedule Value',
+                                                                        'Chiller Temp Sch')
 
         # get loop internal variable handle
-        self.vdot_loop_hndl = self.api.exchange.get_internal_variable_handle(state, 'Plant Design Volume Flow Rate','CHW Loop')
+        self.vdot_loop_hndl = self.api.exchange.get_internal_variable_handle(state, 'Plant Design Volume Flow Rate',
+                                                                             'CHW Loop')
 
         # get component internal variable handles
-        self.t_in_hndl = self.api.exchange.get_internal_variable_handle(state,'Inlet Temperature for Plant Connection 1','CHW Loop Ice Tank')
-        self.mdot_in_hndl = self.api.exchange.get_internal_variable_handle(state,'Inlet Mass Flow Rate for Plant Connection 1','CHW Loop Ice Tank')
-        self.cp_in_hndl = self.api.exchange.get_internal_variable_handle(state,'Inlet Specific Heat for Plant Connection 1','CHW Loop Ice Tank')
-        self.load_in_hndl = self.api.exchange.get_internal_variable_handle(state, 'Load Request for Plant Connection 1','CHW Loop Ice Tank')
+        self.t_in_hndl = self.api.exchange.get_internal_variable_handle(state,
+                                                                        'Inlet Temperature for Plant Connection 1',
+                                                                        'CHW Loop Ice Tank')
+        self.mdot_in_hndl = self.api.exchange.get_internal_variable_handle(state,
+                                                                           'Inlet Mass Flow Rate for Plant Connection 1',
+                                                                           'CHW Loop Ice Tank')
+        self.cp_in_hndl = self.api.exchange.get_internal_variable_handle(state,
+                                                                         'Inlet Specific Heat for Plant Connection 1',
+                                                                         'CHW Loop Ice Tank')
+        self.load_in_hndl = self.api.exchange.get_internal_variable_handle(state, 'Load Request for Plant Connection 1',
+                                                                           'CHW Loop Ice Tank')
 
         # get setup actuator handles
-        self.mdot_min_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1','Minimum Mass Flow Rate', 'CHW Loop Ice Tank')
-        self.mdot_max_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1','Maximum Mass Flow Rate', 'CHW Loop Ice Tank')
-        self.vdot_des_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1','Design Volume Flow Rate', 'CHW Loop Ice Tank')
-        self.load_min_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1','Minimum Loading Capacity', 'CHW Loop Ice Tank')
-        self.load_max_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1','Maximum Loading Capacity', 'CHW Loop Ice Tank')
-        self.load_opt_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1','Optimal Loading Capacity', 'CHW Loop Ice Tank')
+        self.mdot_min_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1',
+                                                                   'Minimum Mass Flow Rate', 'CHW Loop Ice Tank')
+        self.mdot_max_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1',
+                                                                   'Maximum Mass Flow Rate', 'CHW Loop Ice Tank')
+        self.vdot_des_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1',
+                                                                   'Design Volume Flow Rate', 'CHW Loop Ice Tank')
+        self.load_min_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1',
+                                                                   'Minimum Loading Capacity', 'CHW Loop Ice Tank')
+        self.load_max_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1',
+                                                                   'Maximum Loading Capacity', 'CHW Loop Ice Tank')
+        self.load_opt_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1',
+                                                                   'Optimal Loading Capacity', 'CHW Loop Ice Tank')
 
         # get sim actuator handles
-        self.t_out_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Outlet Temperature','CHW Loop Ice Tank')
-        self.mdot_out_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Mass Flow Rate','CHW Loop Ice Tank')
+        self.t_out_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Outlet Temperature',
+                                                                'CHW Loop Ice Tank')
+        self.mdot_out_hndl = self.api.exchange.get_actuator_handle(state, 'Plant Connection 1', 'Mass Flow Rate',
+                                                                   'CHW Loop Ice Tank')
 
         # get global handles
         self.bypass_frac_hndl = self.api.exchange.get_global_handle(state, "bypass_frac")
@@ -175,7 +192,6 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
 
         # set current date/time and init bypass fraction
         dt = self.api.exchange.day_of_year(state) * 24 + self.api.exchange.current_time(state)
-        print(f'dt={dt}')
         bypass_frac = 0
 
         # charge
@@ -206,16 +222,37 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
 
             # find flow rate that results in setpoint if less at full flow
             if t_out < t_set_icetank:
-                for i in range(1, 100):
-                    mdot_tank = (1 - (i / 100)) * mdot_act
-                    mdot_bypass = mdot_act - mdot_tank
-                    bypass_frac = mdot_tank / mdot_act
-                    self.tank.calculate(t_in, mdot_tank, 24, dt, 60)
-                    t_tank = self.tank.outlet_fluid_temp
-                    t_out = ((mdot_tank * t_tank) + (mdot_bypass * t_in)) / (mdot_tank + mdot_bypass)
-                    if abs(t_out - t_set_icetank) < 0.1:
-                        print('converged')
+
+                def obj_f(bypass_frac, setpoint):
+                    m_dot_tank = bypass_frac * mdot_act
+                    m_dot_bypass = mdot_act - m_dot_tank
+                    self.tank.calculate(t_in, m_dot_tank, 24, dt, 60)
+                    t_out_tank = self.tank.outlet_fluid_temp
+                    t_out_loop = ((m_dot_tank * t_out_tank) + (m_dot_bypass * t_in)) / mdot_act
+                    return t_out_loop - setpoint
+
+                # bypass fraction initial conditions
+                x = [0.01, 1]
+
+                # outlet temp initial conditions
+                y = [obj_f(x[0], t_set_icetank), obj_f(x[1], t_set_icetank)]
+
+                # secant root finder
+                num_iter = 0
+                while True:
+                    num_iter += 1
+                    x_n = x[0] - y[0] * (x[1] - x[0]) / (y[1] - y[0])
+                    y_n = obj_f(x_n, t_set_icetank)
+                    x.append(x_n)
+                    y.append(y_n)
+                    x.pop(0)
+                    y.pop(0)
+
+                    if abs(x[0] - x[1]) < 0.01:
+                        print(f"Converged! Num Iter: {num_iter}, Bypass Frac: {x[1]}")
                         break
+
+                bypass_frac = x[1]
 
         # call SOC
         soc = self.tank.state_of_charge
