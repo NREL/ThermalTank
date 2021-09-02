@@ -18,7 +18,7 @@ q_max_brine = mdot * cp_brine * (inlet_temp - tank_temp) * timestep
 #### HX Effectiveness
 ```text
 tank_ua_hx = 20000
-NTU = NTU = tank_ua_hx / (mdot * cp_brine)
+NTU = tank_ua_hx / (mdot * cp_brine)
 effectiveness = 1 - exp(-NTU) * SOC_modifier
 ```
 
