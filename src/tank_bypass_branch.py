@@ -3,7 +3,7 @@ from enum import Enum
 import numpy as np
 from scipy.optimize import minimize
 
-from src.simple_ice_tank import IceTank
+from simple_ice_tank import IceTank
 
 
 class OpMode(Enum):

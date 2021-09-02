@@ -12807,6 +12807,11 @@ Curve:Quadratic,
   0,                                      !- Minimum Value of x {BasedOnField A2}
   1;                                      !- Maximum Value of x {BasedOnField A2}
 
+Schedule:Constant,
+  Num Tanks,                              !- Name
+  Any Number,                             !- Schedule Type Limits Name
+  1;                                      !- Hourly Value
+
 Schedule:Compact,
   Charge Sch,                             !- Name
   Any Number,                             !- Schedule Type Limits Name
@@ -12922,20 +12927,7 @@ PythonPlugin:SearchPaths,
 
 PythonPlugin:Variables,
   Python Variables,                       !- Name
-  bypass_frac,                            !- Variable Name 1
-  soc;                                    !- Variable Name 2
-
-PythonPlugin:OutputVariable,
-  bypass_frac,                            !- Name
-  bypass_frac,                            !- Python Plugin Variable Name
-  Averaged,                               !- Type of Data in Variable
-  SystemTimestep,                         !- Update Frequency
-  ;                                       !- Units
-
-Output:Variable,
-  bypass_frac,                            !- Key Value
-  PythonPlugin:OutputVariable,            !- Variable Name
-  Timestep;                               !- Reporting Frequency
+  soc;                                    !- Variable Name 1
 
 PythonPlugin:OutputVariable,
   soc,                                    !- Name
@@ -12947,6 +12939,11 @@ PythonPlugin:OutputVariable,
 Output:Variable,
   soc,                                    !- Key Value
   PythonPlugin:OutputVariable,            !- Variable Name
+  Timestep;                               !- Reporting Frequency
+
+Output:Variable,
+  Num Tanks,                              !- Key Value
+  Schedule Value,                         !- Variable Name
   Timestep;                               !- Reporting Frequency
 
 Output:Variable,
