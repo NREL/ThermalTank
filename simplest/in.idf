@@ -12919,7 +12919,7 @@ PythonPlugin:SearchPaths,
   PyPaths,                                !- Name
   Yes,                                    !- Add Current Working Directory to Search Path
   Yes,                                    !- Add Input File Directory to Search Path
-  C:\Users\ebonnema/AppData/Local/Programs/Python/Python37/Lib/site-packages, !- Search Path 1
+  C:/Users/ebonnema/AppData/Local/Programs/Python/Python37/Lib/site-packages, !- Search Path 1
   ../src,                                 !- Search Path 2
   ,                                       !- Search Path 3
   ,                                       !- Search Path 4
@@ -12927,7 +12927,16 @@ PythonPlugin:SearchPaths,
 
 PythonPlugin:Variables,
   Python Variables,                       !- Name
-  soc;                                    !- Variable Name 1
+  temp_c,                                 !- Variable Name 1
+  heat_w,                                 !- Variable Name 2
+  pwr_kw,                                 !- Variable Name 3
+  batt_j,                                 !- Variable Name 4
+  soc,                                    !- Variable Name 5
+  t_branch_in,                            !- Variable Name 6
+  t_branch_out,                           !- Variable Name 7
+  t_tank_out,                             !- Variable Name 8
+  mdot_branch,                            !- Variable Name 9
+  mdot_tank;                              !- Variable Name 10
 
 PythonPlugin:OutputVariable,
   soc,                                    !- Name
