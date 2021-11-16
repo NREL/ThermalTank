@@ -384,7 +384,7 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         if (
             (chrg_sch == 0) or
             ((chrg_sch == 1) and (self.tank_is_full)) or
-            ((chrg_sch == -1) and (self.tank_branch.tank.state_of_charge < 0.20))
+            ((chrg_sch == -1) and (self.tank_branch.tank.state_of_charge < 0.15))
         ):
             self.tank_branch.simulate(
                 self.t_in,
