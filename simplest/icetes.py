@@ -348,25 +348,13 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
             self.t_set_icetank_hndl
         )
 
-        # set chiller in E+
+        # chiller setpoints
         if chrg_sch == 1:
-            self.api.exchange.set_actuator_value(
-                state,
-                self.t_set_chiller_hndl,
-                -3.8
-            )
+            t_set_chiller = -3.8
         elif chrg_sch == -1:
-            self.api.exchange.set_actuator_value(
-                state,
-                self.t_set_chiller_hndl,
-                10
-            )
+            t_set_chiller = 10
         elif chrg_sch == 0:
-            self.api.exchange.set_actuator_value(
-                state,
-                self.t_set_chiller_hndl,
-                6.7
-            )
+            t_set_chiller = 6.7
 
         # charge to 100% SOC, considered fully charged until 95%
         if self.tank_branch.tank.state_of_charge == 1:
@@ -380,27 +368,41 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
             else:
                 self.tank_is_full = False
 
-        # in float mode or in charge mode but tank is full, bypass tank but compute env losses
+        # in float, or in charge but tank is full, or in discharge but tank is <20%
         if (
             (chrg_sch == 0) or
             ((chrg_sch == 1) and (self.tank_is_full)) or
-            ((chrg_sch == -1) and (self.tank_branch.tank.state_of_charge < 0.15))
+            ((chrg_sch == -1) and (self.tank_branch.tank.state_of_charge < 0.2))
         ):
-            self.tank_branch.simulate(
-                self.t_in,
-                self.mdot_in,
-                20,
-                t_set_icetank,
-                0,
-                datetime,
-                timestep
-            )
-            self.api.exchange.set_actuator_value(
-                state,
-                self.t_set_chiller_hndl,
-                6.7
-            )
-            self.t_out = self.t_in
+
+            # if discharge but tank is between 5-20%, linearly lower chiller outlet temperature to use all of the ice
+            if ((chrg_sch == -1) and (self.tank_branch.tank.state_of_charge > 0.05)):
+                # line between 20%, 10C and 5%, 6.7C (assume 5% is empty)
+                t_set_chiller = 22 * self.tank_branch.tank.state_of_charge + 5.6
+                self.tank_branch.simulate(
+                    self.t_in,
+                    self.mdot_in,
+                    20,
+                    t_set_icetank,
+                    chrg_sch,
+                    datetime,
+                    timestep
+                )
+                self.t_out = self.tank_branch.outlet_temp
+
+            # in flow mode or tank too full/empty, bypass tank but compute env losses
+            else:
+                t_set_chiller = 6.7
+                self.tank_branch.simulate(
+                    self.t_in,
+                    self.mdot_in,
+                    20,
+                    t_set_icetank,
+                    0,
+                    datetime,
+                    timestep
+                )
+                self.t_out = self.t_in
 
         # else charge or discharge tank
         else:
@@ -413,42 +415,49 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
                 datetime,
                 timestep
             )
-
-            # get outlet temperature and SOC from python
             self.t_out = self.tank_branch.outlet_temp
-            soc = self.tank_branch.tank.state_of_charge
 
-            # set global variables
-            self.api.exchange.set_global_value(
-                state,
-                self.soc_hndl,
-                soc
-            )
-            self.api.exchange.set_global_value(
-                state,
-                self.t_branch_in_hndl,
-                self.t_in
-            )
-            self.api.exchange.set_global_value(
-                state,
-                self.t_branch_out_hndl,
-                self.t_out
-            )
-            self.api.exchange.set_global_value(
-                state,
-                self.t_tank_out_hndl,
-                self.tank_branch.tank.outlet_fluid_temp
-            )
-            self.api.exchange.set_global_value(
-                state,
-                self.mdot_branch_hndl,
-                self.mdot_in
-            )
-            self.api.exchange.set_global_value(
-                state,
-                self.mdot_tank_hndl,
-                self.tank_branch.tank_mass_flow
-            )
+        # get SOC
+        soc = self.tank_branch.tank.state_of_charge
+
+        # actuate chiller
+        self.api.exchange.set_actuator_value(
+            state,
+            self.t_set_chiller_hndl,
+            t_set_chiller
+        )
+
+        # set global variables
+        self.api.exchange.set_global_value(
+            state,
+            self.soc_hndl,
+            soc
+        )
+        self.api.exchange.set_global_value(
+            state,
+            self.t_branch_in_hndl,
+            self.t_in
+        )
+        self.api.exchange.set_global_value(
+            state,
+            self.t_branch_out_hndl,
+            self.t_out
+        )
+        self.api.exchange.set_global_value(
+            state,
+            self.t_tank_out_hndl,
+            self.tank_branch.tank.outlet_fluid_temp
+        )
+        self.api.exchange.set_global_value(
+            state,
+            self.mdot_branch_hndl,
+            self.mdot_in
+        )
+        self.api.exchange.set_global_value(
+            state,
+            self.mdot_tank_hndl,
+            self.tank_branch.tank_mass_flow
+        )
 
         return 0
 
