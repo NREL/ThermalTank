@@ -31,6 +31,7 @@ class TankBypassBranch(object):
         self.num_tanks = num_tanks
         self.outlet_temp = 0
         self.bypass_fraction = 0
+        self.tank_mass_flow = 0
 
     def simulate(self,
                  inlet_temp: float,
@@ -57,11 +58,6 @@ class TankBypassBranch(object):
         # charging condition
         # all flow through tank
         if op_mode == OpMode.CHARGING:
-
-            # verify that charging is possible
-            if inlet_temp > self.tank.tank_temp:
-                print("Warning: tank mode is CHARGING, but inlet_temp > tank_temp")
-
             self.tank.calculate(inlet_temp, mass_flow_rate, env_temp, sim_time, timestep)
             self.outlet_temp = self.tank.outlet_fluid_temp
             self.bypass_fraction = 1
@@ -70,10 +66,6 @@ class TankBypassBranch(object):
         # discharging condition
         # target tank/bypass flow rate split to target set point
         if op_mode == OpMode.DISCHARGING:
-
-            # verify that discharging possible
-            if inlet_temp < self.tank.tank_temp:
-                print("Warning: tank mode is DISCHARGING, but inlet_temp < tank_temp")
 
             # outlet temp at no flow through tank is inlet temp
             t_out_low = inlet_temp
@@ -107,6 +99,7 @@ class TankBypassBranch(object):
             self.outlet_temp = self.branch_outlet_temp(self.bypass_fraction, inlet_temp, mass_flow_rate, env_temp,
                                                        sim_time,
                                                        timestep)
+            self.tank_mass_flow = mass_flow_rate * (1 - self.bypass_fraction)
             return
 
     def branch_outlet_temp(self, bypass_frac, inlet_temp, mass_flow_rate, env_temp, sim_time, timestep):
