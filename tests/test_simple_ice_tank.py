@@ -1,6 +1,5 @@
 import unittest
-
-from src.simple_ice_tank import IceTank, smoothing_function
+from thermal_tank.simple_ice_tank import IceTank, smoothing_function
 
 
 class TestSimpleIceTank(unittest.TestCase):
@@ -42,6 +41,7 @@ class TestSimpleIceTank(unittest.TestCase):
         self.assertAlmostEqual(tank.diameter, 2.26, delta=0.01)
         self.assertAlmostEqual(tank.height, 2.57, delta=0.01)
         self.assertAlmostEqual(tank.fluid_volume, 6.26, delta=0.01)
+        self.assertAlmostEqual(tank.ice_mass, 0, delta=0.01)
         self.assertAlmostEqual(tank.total_fluid_mass, 6253.73, delta=0.01)
         self.assertAlmostEqual(tank.area_lid, 4.01, delta=0.01)
         self.assertAlmostEqual(tank.area_base, 4.01, delta=0.01)
@@ -241,49 +241,49 @@ class TestSimpleIceTank(unittest.TestCase):
 
         # charging
         tank.calculate(-5.0, 5.0, 20, 900, 300)
-        self.assertAlmostEqual(tank.tank_temp, 0.57, delta=0.01)
+        self.assertAlmostEqual(tank.tank_temp, 0.58, delta=0.01)
         self.assertAlmostEqual(tank.ice_mass, 0, delta=0.1)
         self.assertAlmostEqual(tank.outlet_fluid_temp, -0.63, delta=0.01)
 
         # charging
         tank.calculate(-5.0, 5.0, 20, 1200, 300)
         self.assertAlmostEqual(tank.tank_temp, 0.0, delta=0.01)
-        self.assertAlmostEqual(tank.ice_mass, 28.62, delta=0.1)
+        self.assertAlmostEqual(tank.ice_mass, 28.14, delta=0.1)
         self.assertAlmostEqual(tank.outlet_fluid_temp, -1.09, delta=0.01)
 
         # charging
         tank.calculate(-5.0, 5.0, 20, 1500, 300)
         self.assertAlmostEqual(tank.tank_temp, 0.0, delta=0.01)
-        self.assertAlmostEqual(tank.ice_mass, 94.96, delta=0.1)
+        self.assertAlmostEqual(tank.ice_mass, 94.42, delta=0.1)
         self.assertAlmostEqual(tank.outlet_fluid_temp, -1.10, delta=0.01)
 
         # discharging
         tank.calculate(5.0, 5.0, 20, 1800, 300)
         self.assertAlmostEqual(tank.tank_temp, 0.0, delta=0.01)
-        self.assertAlmostEqual(tank.ice_mass, 28.29, delta=0.1)
+        self.assertAlmostEqual(tank.ice_mass, 27.68, delta=0.1)
         self.assertAlmostEqual(tank.outlet_fluid_temp, 4.34, delta=0.01)
 
         # discharging
         tank.calculate(5.0, 5.0, 20, 2100, 300)
         self.assertAlmostEqual(tank.tank_temp, 0.0, delta=0.01)
-        self.assertAlmostEqual(tank.ice_mass, 16.89, delta=0.1)
+        self.assertAlmostEqual(tank.ice_mass, 16.27, delta=0.1)
         self.assertAlmostEqual(tank.outlet_fluid_temp, 4.34, delta=0.01)
 
         # discharging
         tank.calculate(5.0, 5.0, 20, 2400, 300)
         self.assertAlmostEqual(tank.tank_temp, 0.0, delta=0.01)
-        self.assertAlmostEqual(tank.ice_mass, 5.50, delta=0.1)
+        self.assertAlmostEqual(tank.ice_mass, 4.87, delta=0.1)
         self.assertAlmostEqual(tank.outlet_fluid_temp, 4.35, delta=0.01)
 
         # discharging
         tank.calculate(5.0, 5.0, 20, 2700, 300)
-        self.assertAlmostEqual(tank.tank_temp, 0.07, delta=0.01)
+        self.assertAlmostEqual(tank.tank_temp, 0.083, delta=0.01)
         self.assertAlmostEqual(tank.ice_mass, 0, delta=0.1)
-        self.assertAlmostEqual(tank.outlet_fluid_temp, 4.35, delta=0.01)
+        self.assertAlmostEqual(tank.outlet_fluid_temp, 4.36, delta=0.01)
 
         # no mass flow
         tank.calculate(5.0, 0.0, 20, 3000, 300)
-        self.assertAlmostEqual(tank.tank_temp, 0.07, delta=0.01)
+        self.assertAlmostEqual(tank.tank_temp, 0.086, delta=0.01)
         self.assertAlmostEqual(tank.ice_mass, 0, delta=0.1)
         self.assertAlmostEqual(tank.outlet_fluid_temp, 5.0, delta=0.01)
         self.assertAlmostEqual(tank.state_of_charge, 0.0, delta=0.01)

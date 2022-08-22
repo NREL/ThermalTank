@@ -1,6 +1,6 @@
 import unittest
-
-from src.tank_bypass_branch import TankBypassBranch
+from pathlib import Path
+from thermal_tank.tank_bypass_branch import TankBypassBranch
 
 
 class TestTankBypassBranch(unittest.TestCase):
@@ -37,7 +37,9 @@ class TestTankBypassBranch(unittest.TestCase):
                    sim_time=0,
                    timestep=60)
 
-        self.assertAlmostEqual(b.outlet_temp, 9.83, delta=0.01)
+        self.assertAlmostEqual(b.outlet_temp, 9.49, delta=0.01)
+        self.assertAlmostEqual(b.tank.tank_temp, 9.61, delta=0.01)
+        self.assertAlmostEqual(b.tank.state_of_charge, 0, delta=0.01)
 
     def test_simulate_discharging(self):
         tank_data = {
