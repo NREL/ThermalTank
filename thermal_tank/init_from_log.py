@@ -146,7 +146,7 @@ def populate_values(m, start, offset=0, df_states=None):
                 else:
                     continue
             if k == "evap_diff":
-                man_val = value(loop_inlet_vals[start + index + 1] - m.outlet_settemp[index])
+                man_val = value(loop_inlet_vals[(start + index + 1) % len(loop_inlet_vals)] - m.outlet_settemp[index])
                 m.evap_diff[index].set_value(val)
             # Tank Items
             if k == 'soc':
