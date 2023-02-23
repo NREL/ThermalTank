@@ -22,24 +22,7 @@ thermal_tank_log_dir = Path(__file__).absolute().parent.parent / "controls"/ "sc
 tank_states_file = thermal_tank_log_dir / "chw_states_fixed.parquet"
 max_mass_flow_rate = 13.4351549033471
 
-if not os.path.exists(tank_states_file):
-    tank_file = thermal_tank_log_dir / f"thermal_tank_{n_tanks}_coned.log"
-    init = {}
-    states = []
-    with open(tank_file, "r") as f:
-        for line in f:
-            state = json.loads(line)
-            if 'num_tanks' in state.keys():
-                n_tanks = state['num_tanks']
-            if 'timestep' not in state.keys():
-                continue
-            if state['timestep'] == -1:
-                init = state
-            else:
-                states.append(state)
-    df = pd.DataFrame.from_records(states)
-    df.to_parquet(tank_states_file, index=False)
-else:
+if os.path.exists(tank_states_file):
     df = pd.read_parquet(tank_states_file)
 
 
