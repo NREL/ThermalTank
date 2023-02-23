@@ -297,9 +297,12 @@ class IceTank(object):
 
         # set effectiveness due to state of charge effects
         # no change in effectiveness due to state of charge when charging
+        logger.debug(f"effectiveness: {effectiveness}")
         if self.tank_is_charging:
+            logger.debug(f"effectiveness charging: {self.effectiveness_soc_degradation_charging()}")
             return effectiveness * self.effectiveness_soc_degradation_charging()
         else:
+            logger.debug(f"effectiveness discharging: {self.effectiveness_soc_degradation_discharging()}")
             return effectiveness * self.effectiveness_soc_degradation_discharging()
 
     def q_brine_max(self, inlet_temp: float, mass_flow_rate: float, timestep: float):
@@ -314,7 +317,9 @@ class IceTank(object):
         """
 
         ave_temp = (self.tank_temp + inlet_temp) / 2.0
+        logger.debug(f"brine_ave_temp: {ave_temp}")
         cp = specific_heat(self.brine_str, ave_temp)
+        logger.debug(f"brine_cp: {cp}")
         return mass_flow_rate * cp * (inlet_temp - self.tank_temp) * timestep
 
     def q_brine(self, inlet_temp: float, mass_flow_rate: float, timestep: float):
@@ -335,7 +340,12 @@ class IceTank(object):
             return 0.0
 
         q_max = self.q_brine_max(inlet_temp, mass_flow_rate, timestep)
-        return self.effectiveness(inlet_temp, mass_flow_rate) * q_max
+        logger.debug(f"q_brine_max: {q_max}")
+        eff = self.effectiveness(inlet_temp, mass_flow_rate)
+        logger.debug(f"q_brine_effectiveness: {eff}")
+        q_brine = eff * q_max
+        logger.debug(f"q_brine: {q_max * eff}")
+        return q_max * eff
 
     def q_env(self, env_temp: float, timestep: float):
         """
@@ -347,6 +357,7 @@ class IceTank(object):
         :return: heat transfer exchanged with tank, Joules
         """
 
+        logger.debug(f"q_env: {self.tank_ua_env * (env_temp - self.tank_temp) * timestep}")
         return self.tank_ua_env * (env_temp - self.tank_temp) * timestep
 
     def compute_state(self, dq: float):
@@ -505,7 +516,11 @@ class IceTank(object):
         if mass_flow_rate <= 0.0:
             return inlet_temp
 
-        return inlet_temp - self.effectiveness(inlet_temp, mass_flow_rate) * (inlet_temp - self.tank_temp)
+        eff = self.effectiveness(inlet_temp, mass_flow_rate)
+        logger.debug(f"outlet_effectiveness: {eff}")
+        logger.debug(f"outlet_deltaT: {inlet_temp - self.tank_temp}")
+
+        return inlet_temp - eff * (inlet_temp - self.tank_temp)
 
     def calculate(self, inlet_temp: float, mass_flow_rate: float, env_temp: float, sim_time: float, timestep: float):
         """
@@ -537,6 +552,7 @@ class IceTank(object):
         q_brine = self.q_brine(inlet_temp, mass_flow_rate, timestep)
         q_env = self.q_env(env_temp, timestep)
         q_tot = q_brine + q_env
+        logger.debug(f"q_tot: {q_tot}")
 
         # left-hand side
         # M_fluid du = M_fluid * (u_fluid - u_fluid_old)
@@ -544,3 +560,5 @@ class IceTank(object):
 
         # compute new outlet fluid temp
         self.outlet_fluid_temp = self.calculate_outlet_fluid_temp(inlet_temp, mass_flow_rate)
+        logger.debug(f"outlet_fluid_temp: {self.outlet_fluid_temp}")
+

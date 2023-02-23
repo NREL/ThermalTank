@@ -1,6 +1,13 @@
 from pyenergyplus.plugin import EnergyPlusPlugin
 from tank_bypass_branch import TankBypassBranch
 
+from simple_ice_tank import IceTank
+import logging
+logging.basicConfig(filename='enstore-cosim.log',
+                    filemode='w',
+                    format='%(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO  # uncomment to enable INFO messages
+                    )
 
 class UsrDefPlntCmpSet(EnergyPlusPlugin):
 
@@ -116,6 +123,10 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         self.tank_branch.tank.init_state(tank_init_temp=15)
         self.tank_is_full = False
 
+        logging.info(f"day,time,chrg_sch,t_set_icetank,vdot_loop, t_in,mdot_in,load,mdot_act,"
+                     f"soc,tank_temp,mdot_act,t_out")
+
+
         return 0
 
     def on_user_defined_component_model(self, state) -> int:
@@ -182,6 +193,7 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
             load_act = load_max
         else:
             load_act = load
+        log_str = f"{chrg_sch},{t_set_icetank},{vdot_loop},{t_in},{mdot_in},{load},{mdot_act}"
 
         # set current date/time
         dt = self.api.exchange.day_of_year(state) * 24 + self.api.exchange.current_time(state)
@@ -234,4 +246,8 @@ class UsrDefPlntCmpSim(EnergyPlusPlugin):
         self.api.exchange.set_actuator_value(state, self.mdot_out_hndl, mdot_act)
         self.api.exchange.set_actuator_value(state, self.t_out_hndl, t_out)
 
+        log_str = f"{self.api.exchange.day_of_year(state)},{self.api.exchange.current_time(state)}," + log_str
+        log_str += f",{soc},{self.tank_branch.tank.tank_temp},{mdot_act},{t_out},"
+        logging.info(log_str)
+        print(log_str)
         return 0

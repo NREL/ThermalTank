@@ -82,6 +82,7 @@ class TankBypassBranch(object):
         # charging condition
         # all flow through tank
         if op_mode == OpMode.CHARGING:
+            self.tank.tank_is_charging = True
             m_dot_per_tank_max = mass_flow_rate / self.num_tanks
             self.tank.calculate(inlet_temp, m_dot_per_tank_max, env_temp, sim_time, timestep)
             self.outlet_temp = self.tank.outlet_fluid_temp

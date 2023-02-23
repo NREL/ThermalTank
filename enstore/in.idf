@@ -12917,10 +12917,11 @@ PlantEquipmentOperation:ComponentSetpoint,
 
 PythonPlugin:SearchPaths,
   PyPaths,                                !- Name
-  Yes,                                    !- Add Current Working Directory to Search Path
-  Yes,                                    !- Add Input File Directory to Search Path
-  C:\Users\ebonnema/AppData/Local/Programs/Python/Python37/Lib/site-packages, !- Search Path 1
-  ../src,                                 !- Search Path 2
+  No,                                    !- Add Current Working Directory to Search Path
+  No,                                    !- Add Input File Directory to Search Path
+  /Users/dguittet/miniconda3/lib/python3.8/site-packages, !- Search Path 1
+  /Users/dguittet/Projects/EnStore/ThermalTank/enstore,
+  /Users/dguittet/Projects/EnStore/ThermalTank/src,                                 !- Search Path 2
   ,                                       !- Search Path 3
   ,                                       !- Search Path 4
   ;                                       !- Search Path 5

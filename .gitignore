@@ -1,10 +1,13 @@
 .idea/
 cover/
+.vscode/
 ~$*
-eplusout.*
+enstore/
 eplustbl.*
-eplus*.csv
+# eplus*.csv
 sqlite.err
+test*png
+test*parquet
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -135,3 +138,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.DS_Store
+CMakeCache.txt
+CMakeFiles/cmake.check_cache
