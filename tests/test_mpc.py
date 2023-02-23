@@ -912,7 +912,7 @@ def test_building_loop_model():
 
 def test_hourly_opt():
     # load the initial state variables of the TES and chiller from simulated results w/ TES-schedule-based operation
-    df_states = pd.read_parquet(thermal_tank_log_dir / "1tanks" / "chw_states_minute.parquet")
+    df_states = pd.read_parquet(thermal_tank_log_dir / "1tanks" / "chw_states_minute_day.parquet")
     
     # start at 2019-08-29 00:01:00 and go for a day 
     n = 1440  # horizon = 24 hours, timestep = 1 min
@@ -1011,7 +1011,7 @@ def test_hourly_opt_separate():
     # load the initial state variables of the TES and chiller from simulated results w/ TES-schedule-based operation
     mins_per_ts = 15
     seconds_per_ts = mins_per_ts * 60
-    df_states = pd.read_parquet(thermal_tank_log_dir / "1tanks" / "chw_states_minute.parquet")
+    df_states = pd.read_parquet(thermal_tank_log_dir / "1tanks" / "chw_states_minute_day.parquet")
     df_states = df_states.set_index(pd.to_datetime(df_states['DateTime'])).resample(f'{mins_per_ts}min').mean()
     pv_output = pd.read_parquet(thermal_tank_log_dir / ".." / "pv.parquet")["pv_kw"].values
     pv_size_kw = 150
