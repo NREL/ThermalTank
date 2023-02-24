@@ -334,7 +334,7 @@ def test_piecewise_heat_transfer_discharge_1C():
     m.is_discharging[:].set_value(1)
     m.is_charging[:].set_value(0)
 
-    init_mpc(m, tank, True, solver_name="couenne")
+    init_mpc(m, tank, True, solver_name="bonmin")
 
     m.obj = Objective(expr=-summation(m.tank_temp) * 1e5)
     solver = SolverFactory("bonmin")
@@ -1260,7 +1260,7 @@ def test_hourly_opt_separate():
     df.to_parquet(f"test_hourly_opt_separate_{pv_size_kw}_pv_{peak_tou_mult}_peak.parquet")
 
 
-
+test_piecewise_heat_transfer_discharge_1C()
 
 # test_hourly_opt_separate()
 
