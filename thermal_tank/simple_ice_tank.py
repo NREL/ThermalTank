@@ -1,19 +1,7 @@
-import json
-import logging
-
 from math import pi, exp
 from typing import Optional, Union
-from datetime import datetime
 
 from CoolProp.CoolProp import PropsSI
-
-log_level = logging.WARNING
-logger = logging.getLogger('thermal_tank')
-logger.setLevel(log_level)
-logfile = datetime.now().strftime('thermal_tank_%H_%M_%d_%m_%Y.log')
-fh = logging.FileHandler(logfile)
-fh.setLevel(log_level)
-logger.addHandler(fh)
 
 
 def smoothing_function(x: float, x_min: float, x_max: float, y_min: float, y_max: float) -> float:
@@ -163,14 +151,6 @@ class IceTank(object):
         # reset times
         self.time = 0
 
-        def log_init():
-            state = {
-                "timestep": -1,
-                "tank_temp": self.tank_temp,
-                "soc": self.state_of_charge
-            }
-            logger.debug(f"{json.dumps(state)}")
-
         # set state based on latent state of charge
         if latent_state_of_charge is not None:
             # set tank temperature
@@ -188,7 +168,6 @@ class IceTank(object):
             self.ice_mass_prev = self.ice_mass
 
             # we're done
-            log_init()
             return
 
         # set state if based on tank temperature
@@ -210,7 +189,6 @@ class IceTank(object):
                 self.ice_mass_prev = self.ice_mass
 
             # we're done
-            log_init()
             return
 
         # we should never make it here

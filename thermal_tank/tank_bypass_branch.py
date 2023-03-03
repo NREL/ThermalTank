@@ -1,10 +1,9 @@
-import json
 from enum import IntEnum
 
 import numpy as np
 from scipy.optimize import minimize
 
-from simple_ice_tank import IceTank, logger
+from simple_ice_tank import IceTank
 
 
 class OpMode(IntEnum):
@@ -37,22 +36,6 @@ class TankBypassBranch(object):
         params = {
             "num_tanks": num_tanks
         }
-        logger.debug(f"{json.dumps(params)}")
-
-    def log_state(self, inlet_temp, env_temp, op_mode):
-        state = {
-            "timestep": self.tank.time,
-            "inlet_temp": inlet_temp,
-            "outlet_temp": self.tank.outlet_fluid_temp,
-            "outlet_settemp": self.outlet_temp,
-            "tank_temp": self.tank.tank_temp,
-            "env_temp": env_temp,
-            "tank_flow_fraction": 1 - self.bypass_fraction,
-            "soc": self.tank.state_of_charge,
-            "is_charging": int(self.tank.tank_is_charging),
-            "op_mode": int(op_mode)
-        }
-        logger.debug(f"{json.dumps(state)}")
 
     def simulate(self,
                  inlet_temp: float,
@@ -76,7 +59,6 @@ class TankBypassBranch(object):
             self.outlet_temp = inlet_temp
             self.tank.calculate(inlet_temp, 0, env_temp, sim_time, timestep)
             self.bypass_fraction = 1
-            self.log_state(inlet_temp, env_temp, op_mode)
             return
 
         # charging condition
@@ -86,7 +68,6 @@ class TankBypassBranch(object):
             self.tank.calculate(inlet_temp, m_dot_per_tank_max, env_temp, sim_time, timestep)
             self.outlet_temp = self.tank.outlet_fluid_temp
             self.bypass_fraction = 0
-            self.log_state(inlet_temp, env_temp, op_mode)
             return
 
         # discharging condition
@@ -101,7 +82,6 @@ class TankBypassBranch(object):
                 self.tank.calculate(inlet_temp, 0, env_temp, sim_time, timestep)
                 self.outlet_temp = inlet_temp
                 self.bypass_fraction = 1
-                self.log_state(inlet_temp, env_temp, op_mode)
                 return
 
             # if we've made it here, we need to discharge
@@ -114,7 +94,6 @@ class TankBypassBranch(object):
             if t_out_high > branch_set_point:
                 self.outlet_temp = t_out_high
                 self.bypass_fraction = 0
-                self.log_state(inlet_temp, env_temp, op_mode)
                 return
 
         # finally, if we've made it here, we need to split flow between the tank and the bypass
@@ -129,7 +108,6 @@ class TankBypassBranch(object):
                                                    sim_time,
                                                    timestep)
         self.tank_mass_flow = mass_flow_rate * (1 - self.bypass_fraction)
-        self.log_state(inlet_temp, env_temp, op_mode)
         return
 
     def branch_outlet_temp(self, bypass_frac, inlet_temp, mass_flow_rate, env_temp, sim_time, timestep):
