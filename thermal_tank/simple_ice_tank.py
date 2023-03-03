@@ -1,7 +1,7 @@
 from math import pi, exp
 from typing import Optional, Union
 
-from CoolProp.CoolProp import PropsSI
+from thermal_tank.fluid import FluidType, get_fluid
 
 
 def smoothing_function(x: float, x_min: float, x_max: float, y_min: float, y_max: float) -> float:
@@ -34,51 +34,12 @@ def smoothing_function(x: float, x_min: float, x_max: float, y_min: float, y_max
     return (y_max - y_min) * y_sig + y_min
 
 
-def c_to_k(temp):
-    """
-    Convert degrees Celsius to Kelvin
-
-    :param temp: degrees Celsius
-    :return: Kelvin
-    """
-
-    return temp + 273.15
-
-
-def density(fluid_str: str, temp: float):
-    """
-    Gets fluid density using CoolProp
-
-    Assumes a pressure of 140 kPa
-
-    :param fluid_str: fluid input string, as defined by CoolProp
-    :param temp: temperature, C
-    :return: density, kg/m3
-    """
-
-    return PropsSI("D", "T", c_to_k(temp), "P", 140000, fluid_str)
-
-
-def specific_heat(fluid_str: str, temp: float):
-    """
-    Gets fluid specific heat using CoolProp
-
-    Assumes a pressure of 140 kPa
-
-    :param fluid_str: fluid input string, as defined by CoolProp
-    :param temp: temperature, C
-    :return: specific heat, J/kg-K
-    """
-
-    return PropsSI("C", "T", c_to_k(temp), "P", 140000, fluid_str)
-
-
 class IceTank(object):
 
     def __init__(self, data: dict):
         # fluid strings
-        self.fluid_str = "WATER"  # Water
-        self.brine_str = "INCOMP::MPG[0.3]"  # Propylene Glycol - 30% by mass
+        self.fluid = get_fluid(FluidType.Water)
+        self.brine = get_fluid(FluidType.PropyleneGlycol, 0.3)  # Propylene Glycol - 30% by mass
 
         # geometry
         self.diameter = float(data["tank_diameter"])  # m
@@ -90,7 +51,7 @@ class IceTank(object):
         self.area_total = self.area_lid + self.area_base + self.area_wall  # m2
 
         # thermodynamics and heat transfer
-        self.total_fluid_mass = self.fluid_volume * density(self.fluid_str, 20)  # kg
+        self.total_fluid_mass = self.fluid_volume * self.fluid.density(20)  # kg
         self.ice_mass = None
         self.ice_mass_prev = None
         self.tank_temp = None
@@ -271,7 +232,7 @@ class IceTank(object):
             return 1
 
         # set effectiveness due to mass flow effects
-        num_transfer_units = self.tank_ua_hx / (mass_flow_rate * specific_heat(self.brine_str, temperature))
+        num_transfer_units = self.tank_ua_hx / (mass_flow_rate * self.brine.specific_heat(temperature))
         effectiveness = 1 - exp(-num_transfer_units)
 
         # set effectiveness due to state of charge effects
@@ -293,7 +254,7 @@ class IceTank(object):
         """
 
         ave_temp = (self.tank_temp + inlet_temp) / 2.0
-        cp = specific_heat(self.brine_str, ave_temp)
+        cp = self.brine.specific_heat(ave_temp)
         return mass_flow_rate * cp * (inlet_temp - self.tank_temp) * timestep
 
     def q_brine(self, inlet_temp: float, mass_flow_rate: float, timestep: float):
@@ -361,7 +322,7 @@ class IceTank(object):
         # sensible fluid charging
         if self.tank_temp > 0:
             # compute liquid sensible capacity available
-            cp_sens_liq = specific_heat(self.fluid_str, self.tank_temp)
+            cp_sens_liq = self.fluid.specific_heat(self.tank_temp)
             q_sens_avail = self.liquid_mass * cp_sens_liq * self.tank_temp
 
             # can the load be fully met with sensible-only charging?
@@ -469,7 +430,7 @@ class IceTank(object):
 
         # sensible liquid discharging
         if self.ice_mass == 0:
-            cp_sens_liq = specific_heat(self.fluid_str, self.tank_temp)
+            cp_sens_liq = self.fluid.specific_heat(self.tank_temp)
             self.tank_temp += dq / (self.total_fluid_mass * cp_sens_liq)
 
     def calculate_outlet_fluid_temp(self, inlet_temp: float, mass_flow_rate: float):

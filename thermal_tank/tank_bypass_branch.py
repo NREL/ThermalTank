@@ -3,7 +3,7 @@ from enum import IntEnum
 import numpy as np
 from scipy.optimize import minimize
 
-from simple_ice_tank import IceTank
+from thermal_tank.simple_ice_tank import IceTank
 
 
 class OpMode(IntEnum):
@@ -32,10 +32,6 @@ class TankBypassBranch(object):
         self.outlet_temp = 0
         self.bypass_fraction = 0
         self.tank_mass_flow = 0
-
-        params = {
-            "num_tanks": num_tanks
-        }
 
     def simulate(self,
                  inlet_temp: float,
