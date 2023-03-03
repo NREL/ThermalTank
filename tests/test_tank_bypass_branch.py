@@ -1,5 +1,5 @@
 import unittest
-from pathlib import Path
+
 from thermal_tank.tank_bypass_branch import TankBypassBranch
 
 

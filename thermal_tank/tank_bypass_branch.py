@@ -1,10 +1,10 @@
+import json
 from enum import IntEnum
 
 import numpy as np
 from scipy.optimize import minimize
 
-from .simple_ice_tank import IceTank, logger
-import json
+from simple_ice_tank import IceTank, logger
 
 
 class OpMode(IntEnum):

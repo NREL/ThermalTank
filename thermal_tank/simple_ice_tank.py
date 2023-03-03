@@ -1,8 +1,9 @@
+import json
+import logging
+
 from math import pi, exp
 from typing import Optional, Union
-import logging
 from datetime import datetime
-import json
 
 from CoolProp.CoolProp import PropsSI
 
@@ -238,7 +239,7 @@ class IceTank(object):
 
         soc = self.state_of_charge
         L, k, x_0, a, b = (0.46399073996160234, 79.99996255766429, 0.12387593954791037, 0.3494863028354558, 0.1931963545684955)
-        
+
         return L / (1 + exp(-k * (soc - x_0))) + a * soc + b
 
         # piecewise degradation function for state of charge
