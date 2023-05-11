@@ -238,9 +238,10 @@ class IceTank(object):
         # set effectiveness due to state of charge effects
         # no change in effectiveness due to state of charge when charging
         if self.tank_is_charging:
-            return effectiveness * self.effectiveness_soc_degradation_charging()
+            eff = min(1, max(0, effectiveness * self.effectiveness_soc_degradation_charging()))
+            return
         else:
-            return effectiveness * self.effectiveness_soc_degradation_discharging()
+            return min(1, max(0, effectiveness * self.effectiveness_soc_degradation_discharging()))
 
     def q_brine_max(self, inlet_temp: float, mass_flow_rate: float, timestep: float):
         """

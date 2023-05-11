@@ -22,7 +22,7 @@ class TestSimpleIceTank(unittest.TestCase):
         self.assertAlmostEqual(tank.diameter, 2.26, delta=0.01)
         self.assertAlmostEqual(tank.height, 2.57, delta=0.01)
         self.assertAlmostEqual(tank.fluid_volume, 6.26, delta=0.01)
-        self.assertAlmostEqual(tank.total_fluid_mass, 6253.73, delta=0.01)
+        self.assertAlmostEqual(tank.total_fluid_mass, 6253.60, delta=0.01)
         self.assertAlmostEqual(tank.area_lid, 4.01, delta=0.01)
         self.assertAlmostEqual(tank.area_base, 4.01, delta=0.01)
         self.assertAlmostEqual(tank.area_wall, 18.22, delta=0.01)
@@ -62,7 +62,7 @@ class TestSimpleIceTank(unittest.TestCase):
 
     def test_q(self):
         tank = IceTank(self.data)
-        self.assertAlmostEqual(tank.q_brine(10, 1, 1), -7652, delta=1)
+        self.assertAlmostEqual(tank.q_brine(10, 1, 1), -7386, delta=1)
 
     def test_q_env(self):
         tank = IceTank(self.data)

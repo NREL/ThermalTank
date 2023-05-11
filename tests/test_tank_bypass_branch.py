@@ -37,7 +37,7 @@ class TestTankBypassBranch(unittest.TestCase):
                    sim_time=0,
                    timestep=60)
 
-        self.assertAlmostEqual(b.outlet_temp, 9.49, delta=0.01)
+        self.assertAlmostEqual(b.outlet_temp, 9.83, delta=0.01)
         self.assertAlmostEqual(b.tank.tank_temp, 9.61, delta=0.01)
         self.assertAlmostEqual(b.tank.state_of_charge, 0, delta=0.01)
 
