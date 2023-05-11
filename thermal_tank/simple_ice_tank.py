@@ -171,52 +171,22 @@ class IceTank(object):
         """
         return min(max(1 - self.liquid_mass / self.total_fluid_mass, 0), 1)
 
-    def effectiveness_soc_degradation_discharging(self):
-        """
-        Effectiveness modifier due to state of charge for discharging mode
-        """
+    def set_ua_hx(self, temperature, mass_flow_rate, state_of_charge):
 
-        soc = self.state_of_charge
-        L, k, x_0, a, b = (0.46399073996160234, 79.99996255766429, 0.12387593954791037, 0.3494863028354558, 0.1931963545684955)
+        # polynomial order 3
+        # ua = 54163 * state_of_charge ** 3 - 48463 * state_of_charge ** 2 + 14411 * state_of_charge + 14802
 
-        return L / (1 + exp(-k * (soc - x_0))) + a * soc + b
+        # polynomial order 2
+        # ua = 29714 * state_of_charge ** 2 - 11314 * state_of_charge + 15714
 
-        # piecewise degradation function for state of charge
-        piecewise_cutoff = 0.25
+       # linear
+        ua_at_soc_1 = 35000
+        ua_at_soc_0 = 15000
+        slope = ua_at_soc_1 - ua_at_soc_0
+        ua = slope * state_of_charge + ua_at_soc_0
 
-        # linear portion
-        max_degradation_linear = 1.0
-        min_degradation_linear = 0.75
-        degradation_slope = (max_degradation_linear - min_degradation_linear) / (1 - piecewise_cutoff)
-        degradation_intercept = max_degradation_linear - degradation_slope
-
-        # sigmoid portion
-        max_degradation_sig = min_degradation_linear
-        min_degradation_sig = 0.2
-
-        if soc > piecewise_cutoff:
-            return degradation_slope * soc + degradation_intercept
-        else:
-            soc_degradation = smoothing_function(soc,
-                                                 0,
-                                                 piecewise_cutoff,
-                                                 min_degradation_sig,
-                                                 max_degradation_sig)
-            return min(max(soc_degradation, min_degradation_sig), max_degradation_sig)
-
-    def effectiveness_soc_degradation_charging(self):
-        """
-        Effectiveness modifier due to state of charge for charging mode
-        """
-        soc = self.state_of_charge
-
-        # linear data
-        max_degradation_linear = 0.9
-        min_degradation_linear = 1.2
-        degradation_slope = (max_degradation_linear - min_degradation_linear)  # / 1
-        degradation_intercept = max_degradation_linear - degradation_slope
-
-        return degradation_slope * soc + degradation_intercept
+        self.tank_ua_hx = ua
+        return self.tank_ua_hx
 
     def effectiveness(self, temperature: float, mass_flow_rate: float):
         """
@@ -231,17 +201,11 @@ class IceTank(object):
         if mass_flow_rate <= 0.0:
             return 1
 
+        self.set_ua_hx(temperature, mass_flow_rate, self.state_of_charge)
+
         # set effectiveness due to mass flow effects
         num_transfer_units = self.tank_ua_hx / (mass_flow_rate * self.brine.specific_heat(temperature))
-        effectiveness = 1 - exp(-num_transfer_units)
-
-        # set effectiveness due to state of charge effects
-        # no change in effectiveness due to state of charge when charging
-        if self.tank_is_charging:
-            eff = min(1, max(0, effectiveness * self.effectiveness_soc_degradation_charging()))
-            return
-        else:
-            return min(1, max(0, effectiveness * self.effectiveness_soc_degradation_discharging()))
+        return 1 - exp(-num_transfer_units)
 
     def q_brine_max(self, inlet_temp: float, mass_flow_rate: float, timestep: float):
         """
