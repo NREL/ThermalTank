@@ -41,7 +41,7 @@ class TankBypassBranch(object):
                  op_mode: int,
                  sim_time: float,
                  timestep: float,
-                 bypass_frac: float=None):
+                 bypass_frac: float = None):
 
         if op_mode == 0:
             op_mode = OpMode.FLOAT

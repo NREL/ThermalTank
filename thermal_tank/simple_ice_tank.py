@@ -1,9 +1,9 @@
 from math import pi, exp
 from typing import Optional, Union
 
-from thermal_tank.fluid import FluidType, get_fluid
-
 import numpy as np
+
+from thermal_tank.fluid import FluidType, get_fluid
 
 
 def smoothing_function(x: float, x_min: float, x_max: float, y_min: float, y_max: float) -> float:
@@ -191,13 +191,13 @@ class IceTank(object):
 
     def set_ua_hx_charging(self):
         soc = self.state_of_charge
-        arr_soc = np.array([soc**3, soc**2, soc, 1])
+        arr_soc = np.array([soc ** 3, soc ** 2, soc, 1])
         ua_hx = np.dot(arr_soc, self.c_ua_ch)
         return ua_hx
 
     def set_ua_hx_discharging(self):
         soc = self.state_of_charge
-        arr_soc = np.array([soc**3, soc**2, soc, 1])
+        arr_soc = np.array([soc ** 3, soc ** 2, soc, 1])
         ua_hx = np.dot(arr_soc, self.c_ua_dis)
         return ua_hx
 
