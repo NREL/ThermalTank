@@ -3,6 +3,8 @@ from typing import Optional, Union
 
 from thermal_tank.fluid import FluidType, get_fluid
 
+import numpy as np
+
 
 def smoothing_function(x: float, x_min: float, x_max: float, y_min: float, y_max: float) -> float:
     """
@@ -60,7 +62,23 @@ class IceTank(object):
         self.r_value_lid = float(data["r_value_lid"])  # m2-K/W
         self.r_value_base = float(data["r_value_base"])  # m2-K/W
         self.r_value_wall = float(data["r_value_wall"])  # m2-K/W
-        self.tank_ua_hx = 20000
+
+        # UA coefficients (ch-charging; dis-discharging)
+        self.c_ua_ch = np.array([
+            float(data["coeff_c3_ua_charging"]),
+            float(data["coeff_c2_ua_charging"]),
+            float(data["coeff_c1_ua_charging"]),
+            float(data["coeff_c0_ua_charging"])
+        ])
+        self.c_ua_dis = np.array([
+            float(data["coeff_c3_ua_discharging"]),
+            float(data["coeff_c2_ua_discharging"]),
+            float(data["coeff_c1_ua_discharging"]),
+            float(data["coeff_c0_ua_discharging"])
+        ])
+
+        # for reporting
+        self.tank_ua_hx = 0
 
         # TODO: convection coefficients should be different based on surface orientation
         conv_coeff_inside_tank_wall = 1000  # W/m2-K
@@ -171,22 +189,17 @@ class IceTank(object):
         """
         return min(max(1 - self.liquid_mass / self.total_fluid_mass, 0), 1)
 
-    def set_ua_hx(self, temperature, mass_flow_rate, state_of_charge):
+    def set_ua_hx_charging(self):
+        soc = self.state_of_charge
+        arr_soc = np.array([soc**3, soc**2, soc, 1])
+        ua_hx = np.dot(arr_soc, self.c_ua_ch)
+        return ua_hx
 
-        # polynomial order 3
-        # ua = 54163 * state_of_charge ** 3 - 48463 * state_of_charge ** 2 + 14411 * state_of_charge + 14802
-
-        # polynomial order 2
-        # ua = 29714 * state_of_charge ** 2 - 11314 * state_of_charge + 15714
-
-       # linear
-        ua_at_soc_1 = 35000
-        ua_at_soc_0 = 15000
-        slope = ua_at_soc_1 - ua_at_soc_0
-        ua = slope * state_of_charge + ua_at_soc_0
-
-        self.tank_ua_hx = ua
-        return self.tank_ua_hx
+    def set_ua_hx_discharging(self):
+        soc = self.state_of_charge
+        arr_soc = np.array([soc**3, soc**2, soc, 1])
+        ua_hx = np.dot(arr_soc, self.c_ua_dis)
+        return ua_hx
 
     def effectiveness(self, temperature: float, mass_flow_rate: float):
         """
@@ -201,10 +214,14 @@ class IceTank(object):
         if mass_flow_rate <= 0.0:
             return 1
 
-        self.set_ua_hx(temperature, mass_flow_rate, self.state_of_charge)
+        ua_hx = 0
+        if self.tank_is_charging:
+            ua_hx = self.set_ua_hx_charging()
+        else:
+            ua_hx = self.set_ua_hx_discharging()
 
         # set effectiveness due to mass flow effects
-        num_transfer_units = self.tank_ua_hx / (mass_flow_rate * self.brine.specific_heat(temperature))
+        num_transfer_units = ua_hx / (mass_flow_rate * self.brine.specific_heat(temperature))
         return 1 - exp(-num_transfer_units)
 
     def q_brine_max(self, inlet_temp: float, mass_flow_rate: float, timestep: float):
