@@ -65,16 +65,16 @@ class IceTank(object):
 
         # UA coefficients (ch-charging; dis-discharging)
         self.c_ua_ch = np.array([
-            float(data["coeff_c3_ua_charging"]),
-            float(data["coeff_c2_ua_charging"]),
+            float(data["coeff_c0_ua_charging"]),
             float(data["coeff_c1_ua_charging"]),
-            float(data["coeff_c0_ua_charging"])
+            float(data["coeff_c2_ua_charging"]),
+            float(data["coeff_c3_ua_charging"])
         ])
         self.c_ua_dis = np.array([
-            float(data["coeff_c3_ua_discharging"]),
-            float(data["coeff_c2_ua_discharging"]),
+            float(data["coeff_c0_ua_discharging"]),
             float(data["coeff_c1_ua_discharging"]),
-            float(data["coeff_c0_ua_discharging"])
+            float(data["coeff_c2_ua_discharging"]),
+            float(data["coeff_c3_ua_discharging"])
         ])
 
         # for reporting
@@ -191,13 +191,13 @@ class IceTank(object):
 
     def set_ua_hx_charging(self):
         soc = self.state_of_charge
-        arr_soc = np.array([soc**3, soc**2, soc, 1])
+        arr_soc = np.array([1, soc, soc**2, soc**3])
         ua_hx = np.dot(arr_soc, self.c_ua_ch)
         return ua_hx
 
     def set_ua_hx_discharging(self):
         soc = self.state_of_charge
-        arr_soc = np.array([soc**3, soc**2, soc, 1])
+        arr_soc = np.array([1, soc, soc**2, soc**3])
         ua_hx = np.dot(arr_soc, self.c_ua_dis)
         return ua_hx
 
