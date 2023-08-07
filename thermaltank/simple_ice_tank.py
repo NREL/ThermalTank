@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from thermal_tank.fluid import FluidType, get_fluid
+from thermaltank.fluid import FluidType, get_fluid
 
 
 def smoothing_function(x: float, x_min: float, x_max: float, y_min: float, y_max: float) -> float:

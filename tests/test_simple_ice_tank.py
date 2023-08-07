@@ -1,6 +1,6 @@
 import unittest
 
-from thermal_tank.simple_ice_tank import IceTank, smoothing_function
+from thermaltank.simple_ice_tank import IceTank, smoothing_function
 
 
 class TestSimpleIceTank(unittest.TestCase):

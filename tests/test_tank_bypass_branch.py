@@ -1,6 +1,6 @@
 import unittest
 
-from thermal_tank.tank_bypass_branch import TankBypassBranch
+from thermaltank.tank_bypass_branch import TankBypassBranch
 
 
 class TestTankBypassBranch(unittest.TestCase):

@@ -26,4 +26,4 @@ jobs:
           flake8 . --count --exit-zero --statistics
       - name: Unit tests
         run: |
-          python3 setup.py nosetests
+          python3 -m pytest -v

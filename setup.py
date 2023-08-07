@@ -2,7 +2,7 @@ from pathlib import Path
 
 from setuptools import setup, find_packages
 
-from thermal_tank import VERSION
+from thermaltank import VERSION
 
 readme_file = Path(__file__).parent.resolve() / 'README.md'
 readme_contents = readme_file.read_text()
