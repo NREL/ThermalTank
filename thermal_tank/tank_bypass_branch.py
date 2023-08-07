@@ -25,14 +25,14 @@ class TankBypassBranch(object):
                 "r_value_base": 9 / 5.67826,
                 "r_value_wall": 9 / 5.67826,
                 "initial_temperature": -5,
-                "coeff_c0_ua_charging": 5.101e+04,
-                "coeff_c1_ua_charging": -1.255e+05,
-                "coeff_c2_ua_charging": 2.247e+05,
-                "coeff_c3_ua_charging": -1.452e+05,
-                "coeff_c0_ua_discharging": 1.605e+03,
-                "coeff_c1_ua_discharging": 8.533e+04,
-                "coeff_c2_ua_discharging": -1.872e+05,
-                "coeff_c3_ua_discharging": 1.288e+05
+                "coeff_c0_ua_charging": 4.950e+04,
+                "coeff_c1_ua_charging": -1.262e+05,
+                "coeff_c2_ua_charging": 2.243e+05,
+                "coeff_c3_ua_charging": -1.455e+05,
+                "coeff_c0_ua_discharging": 1.848e+03,
+                "coeff_c1_ua_discharging": 7.429e+04,
+                "coeff_c2_ua_discharging": -1.419e+05,
+                "coeff_c3_ua_discharging": 9.366e+04
             }
 
         self.tank = IceTank(tank_data)
