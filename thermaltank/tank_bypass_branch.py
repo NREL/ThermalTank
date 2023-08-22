@@ -122,5 +122,8 @@ class TankBypassBranch(object):
         return ((m_dot_per_tank * t_out_tank * self.num_tanks) + (m_dot_bypass * inlet_temp)) / mass_flow_rate
 
     def obj_f(self, bypass_frac, inlet_temp, mass_flow_rate, env_temp, branch_set_point, sim_time, timestep):
-        t_out_branch = self.branch_outlet_temp(bypass_frac, inlet_temp, mass_flow_rate, env_temp, sim_time, timestep)
+        if type(bypass_frac) is float:
+            t_out_branch = self.branch_outlet_temp(bypass_frac, inlet_temp, mass_flow_rate, env_temp, sim_time, timestep)
+        else:
+            t_out_branch = self.branch_outlet_temp(bypass_frac[0], inlet_temp, mass_flow_rate, env_temp, sim_time, timestep)
         return abs(t_out_branch - branch_set_point)
