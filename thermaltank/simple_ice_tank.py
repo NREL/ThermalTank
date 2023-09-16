@@ -1,7 +1,9 @@
 from math import pi, exp
 from typing import Optional, Union
 
-from CoolProp.CoolProp import PropsSI
+import numpy as np
+
+from thermaltank.fluid import FluidType, get_fluid
 
 
 def smoothing_function(x: float, x_min: float, x_max: float, y_min: float, y_max: float) -> float:
@@ -34,51 +36,12 @@ def smoothing_function(x: float, x_min: float, x_max: float, y_min: float, y_max
     return (y_max - y_min) * y_sig + y_min
 
 
-def c_to_k(temp):
-    """
-    Convert degrees Celsius to Kelvin
-
-    :param temp: degrees Celsius
-    :return: Kelvin
-    """
-
-    return temp + 273.15
-
-
-def density(fluid_str: str, temp: float):
-    """
-    Gets fluid density using CoolProp
-
-    Assumes a pressure of 140 kPa
-
-    :param fluid_str: fluid input string, as defined by CoolProp
-    :param temp: temperature, C
-    :return: density, kg/m3
-    """
-
-    return PropsSI("D", "T", c_to_k(temp), "P", 140000, fluid_str)
-
-
-def specific_heat(fluid_str: str, temp: float):
-    """
-    Gets fluid specific heat using CoolProp
-
-    Assumes a pressure of 140 kPa
-
-    :param fluid_str: fluid input string, as defined by CoolProp
-    :param temp: temperature, C
-    :return: specific heat, J/kg-K
-    """
-
-    return PropsSI("C", "T", c_to_k(temp), "P", 140000, fluid_str)
-
-
 class IceTank(object):
 
     def __init__(self, data: dict):
         # fluid strings
-        self.fluid_str = "WATER"  # Water
-        self.brine_str = "INCOMP::MPG[0.3]"  # Propylene Glycol - 30% by mass
+        self.fluid = get_fluid(FluidType.Water)
+        self.brine = get_fluid(FluidType.PropyleneGlycol, 0.3)  # Propylene Glycol - 30% by mass
 
         # geometry
         self.diameter = float(data["tank_diameter"])  # m
@@ -90,7 +53,7 @@ class IceTank(object):
         self.area_total = self.area_lid + self.area_base + self.area_wall  # m2
 
         # thermodynamics and heat transfer
-        self.total_fluid_mass = self.fluid_volume * density(self.fluid_str, 20)  # kg
+        self.total_fluid_mass = self.fluid_volume * self.fluid.density(20)  # kg
         self.ice_mass = None
         self.ice_mass_prev = None
         self.tank_temp = None
@@ -99,6 +62,23 @@ class IceTank(object):
         self.r_value_lid = float(data["r_value_lid"])  # m2-K/W
         self.r_value_base = float(data["r_value_base"])  # m2-K/W
         self.r_value_wall = float(data["r_value_wall"])  # m2-K/W
+
+        # UA coefficients (ch-charging; dis-discharging)
+        self.c_ua_ch = np.array([
+            float(data["coeff_c0_ua_charging"]),
+            float(data["coeff_c1_ua_charging"]),
+            float(data["coeff_c2_ua_charging"]),
+            float(data["coeff_c3_ua_charging"])
+        ])
+        self.c_ua_dis = np.array([
+            float(data["coeff_c0_ua_discharging"]),
+            float(data["coeff_c1_ua_discharging"]),
+            float(data["coeff_c2_ua_discharging"]),
+            float(data["coeff_c3_ua_discharging"])
+        ])
+
+        # for reporting
+        self.tank_ua_hx = 0
 
         # TODO: convection coefficients should be different based on surface orientation
         conv_coeff_inside_tank_wall = 1000  # W/m2-K
@@ -209,50 +189,17 @@ class IceTank(object):
         """
         return min(max(1 - self.liquid_mass / self.total_fluid_mass, 0), 1)
 
-    def effectiveness_soc_degradation_discharging(self):
-        """
-        Effectiveness modifier due to state of charge for discharging mode
-        """
-
+    def set_ua_hx_charging(self):
         soc = self.state_of_charge
+        arr_soc = np.array([1, soc, soc**2, soc**3])
+        ua_hx = np.dot(arr_soc, self.c_ua_ch)
+        return ua_hx
 
-        # piecewise degradation function for state of charge
-        piecewise_cutoff = 0.25
-
-        # linear portion
-        max_degradation_linear = 1.0
-        min_degradation_linear = 0.75
-        degradation_slope = (max_degradation_linear - min_degradation_linear) / (1 - piecewise_cutoff)
-        degradation_intercept = max_degradation_linear - degradation_slope
-
-        # sigmoid portion
-        max_degradation_sig = min_degradation_linear
-        min_degradation_sig = 0.2
-
-        if soc > piecewise_cutoff:
-            return degradation_slope * soc + degradation_intercept
-        else:
-            soc_degradation = smoothing_function(soc,
-                                                 0,
-                                                 piecewise_cutoff,
-                                                 min_degradation_sig,
-                                                 max_degradation_sig)
-            return min(max(soc_degradation, min_degradation_sig), max_degradation_sig)
-
-    def effectiveness_soc_degradation_charging(self):
-        """
-        Effectiveness modifier due to state of charge for discharging mode
-        """
-
+    def set_ua_hx_discharging(self):
         soc = self.state_of_charge
-
-        # linear data
-        max_degradation_linear = 0.9
-        min_degradation_linear = 1.2
-        degradation_slope = (max_degradation_linear - min_degradation_linear)  # / 1
-        degradation_intercept = max_degradation_linear - degradation_slope
-
-        return degradation_slope * soc + degradation_intercept
+        arr_soc = np.array([1, soc, soc**2, soc**3])
+        ua_hx = np.dot(arr_soc, self.c_ua_dis)
+        return ua_hx
 
     def effectiveness(self, temperature: float, mass_flow_rate: float):
         """
@@ -267,17 +214,16 @@ class IceTank(object):
         if mass_flow_rate <= 0.0:
             return 1
 
-        # set effectiveness due to mass flow effects
-        tank_ua_hx = 20000
-        num_transfer_units = tank_ua_hx / (mass_flow_rate * specific_heat(self.brine_str, temperature))
-        effectiveness = 1 - exp(-num_transfer_units)
-
-        # set effectiveness due to state of charge effects
-        # no change in effectiveness due to state of charge when charging
-        if self.tank_is_charging:
-            return effectiveness * self.effectiveness_soc_degradation_charging()
+        if temperature < self.tank_temp_prev:
+            ua_hx = self.set_ua_hx_charging()
+            self.tank_is_charging = True
         else:
-            return effectiveness * self.effectiveness_soc_degradation_discharging()
+            ua_hx = self.set_ua_hx_discharging()
+            self.tank_is_charging = False
+
+        # set effectiveness due to mass flow effects
+        num_transfer_units = ua_hx / (mass_flow_rate * self.brine.specific_heat(temperature))
+        return 1 - exp(-num_transfer_units)
 
     def q_brine_max(self, inlet_temp: float, mass_flow_rate: float, timestep: float):
         """
@@ -291,7 +237,7 @@ class IceTank(object):
         """
 
         ave_temp = (self.tank_temp + inlet_temp) / 2.0
-        cp = specific_heat(self.brine_str, ave_temp)
+        cp = self.brine.specific_heat(ave_temp)
         return mass_flow_rate * cp * (inlet_temp - self.tank_temp) * timestep
 
     def q_brine(self, inlet_temp: float, mass_flow_rate: float, timestep: float):
@@ -337,10 +283,8 @@ class IceTank(object):
 
         if dq < 0:
             self.compute_charging(dq)
-            self.tank_is_charging = True
         else:
             self.compute_discharging(dq)
-            self.tank_is_charging = False
 
     def compute_charging(self, dq: float):
         """
@@ -359,7 +303,7 @@ class IceTank(object):
         # sensible fluid charging
         if self.tank_temp > 0:
             # compute liquid sensible capacity available
-            cp_sens_liq = specific_heat(self.fluid_str, self.tank_temp)
+            cp_sens_liq = self.fluid.specific_heat(self.tank_temp)
             q_sens_avail = self.liquid_mass * cp_sens_liq * self.tank_temp
 
             # can the load be fully met with sensible-only charging?
@@ -467,7 +411,7 @@ class IceTank(object):
 
         # sensible liquid discharging
         if self.ice_mass == 0:
-            cp_sens_liq = specific_heat(self.fluid_str, self.tank_temp)
+            cp_sens_liq = self.fluid.specific_heat(self.tank_temp)
             self.tank_temp += dq / (self.total_fluid_mass * cp_sens_liq)
 
     def calculate_outlet_fluid_temp(self, inlet_temp: float, mass_flow_rate: float):
@@ -499,7 +443,7 @@ class IceTank(object):
 
         # tank_temp and ice_mass are our state variables
         # if time has advanced, we need to lock down the 'previous' state from the last iteration
-        # otherwise, we will set them to to previous state and then update assuming we're in an iteration
+        # otherwise, we will set them to previous state and then update assuming we're in an iteration
 
         if sim_time > self.time:
             self.time = sim_time

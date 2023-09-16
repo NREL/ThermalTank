@@ -1,6 +1,6 @@
 import unittest
-from pathlib import Path
-from thermal_tank.tank_bypass_branch import TankBypassBranch
+
+from thermaltank.tank_bypass_branch import TankBypassBranch
 
 
 class TestTankBypassBranch(unittest.TestCase):
@@ -26,6 +26,14 @@ class TestTankBypassBranch(unittest.TestCase):
             "r_value_base": 9 / 5.67826,
             "r_value_wall": 9 / 5.67826,
             "initial_temperature": 10,
+            "coeff_c0_ua_charging": 4.950e+04,
+            "coeff_c1_ua_charging": -1.262e+05,
+            "coeff_c2_ua_charging": 2.243e+05,
+            "coeff_c3_ua_charging": -1.455e+05,
+            "coeff_c0_ua_discharging": 1.848e+03,
+            "coeff_c1_ua_discharging": 7.429e+04,
+            "coeff_c2_ua_discharging": -1.419e+05,
+            "coeff_c3_ua_discharging": 9.366e+04
         }
         b = TankBypassBranch(num_tanks=1, tank_data=tank_data)
 
@@ -37,7 +45,7 @@ class TestTankBypassBranch(unittest.TestCase):
                    sim_time=0,
                    timestep=60)
 
-        self.assertAlmostEqual(b.outlet_temp, 9.49, delta=0.01)
+        self.assertAlmostEqual(b.outlet_temp, 9.42, delta=0.01)
         self.assertAlmostEqual(b.tank.tank_temp, 9.61, delta=0.01)
         self.assertAlmostEqual(b.tank.state_of_charge, 0, delta=0.01)
 
@@ -50,6 +58,14 @@ class TestTankBypassBranch(unittest.TestCase):
             "r_value_base": 9 / 5.67826,
             "r_value_wall": 9 / 5.67826,
             "initial_temperature": -10,
+            "coeff_c0_ua_charging": 4.950e+04,
+            "coeff_c1_ua_charging": -1.262e+05,
+            "coeff_c2_ua_charging": 2.243e+05,
+            "coeff_c3_ua_charging": -1.455e+05,
+            "coeff_c0_ua_discharging": 1.848e+03,
+            "coeff_c1_ua_discharging": 7.429e+04,
+            "coeff_c2_ua_discharging": -1.419e+05,
+            "coeff_c3_ua_discharging": 9.366e+04
         }
         b = TankBypassBranch(num_tanks=1, tank_data=tank_data)
 

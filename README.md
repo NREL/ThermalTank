@@ -4,4 +4,4 @@ A repository for developing a thermal tank model which accounts for phase change
 
 ## Testing
 
-![Testing](https://github.com/mitchute/ThermalTank/workflows/Python%20Testing/badge.svg)
+![Testing](https://github.com/NREL/ThermalTank/workflows/Python%20Testing/badge.svg)

@@ -1,12 +1,12 @@
-from enum import Enum
+from enum import IntEnum
 
 import numpy as np
 from scipy.optimize import minimize
 
-from simple_ice_tank import IceTank
+from thermaltank.simple_ice_tank import IceTank
 
 
-class OpMode(Enum):
+class OpMode(IntEnum):
     CHARGING = 1
     DISCHARGING = -1
     FLOAT = 0
@@ -25,6 +25,14 @@ class TankBypassBranch(object):
                 "r_value_base": 9 / 5.67826,
                 "r_value_wall": 9 / 5.67826,
                 "initial_temperature": -5,
+                "coeff_c0_ua_charging": 4.950e+04,
+                "coeff_c1_ua_charging": -1.262e+05,
+                "coeff_c2_ua_charging": 2.243e+05,
+                "coeff_c3_ua_charging": -1.455e+05,
+                "coeff_c0_ua_discharging": 1.848e+03,
+                "coeff_c1_ua_discharging": 7.429e+04,
+                "coeff_c2_ua_discharging": -1.419e+05,
+                "coeff_c3_ua_discharging": 9.366e+04
             }
 
         self.tank = IceTank(tank_data)
@@ -40,7 +48,8 @@ class TankBypassBranch(object):
                  branch_set_point: float,
                  op_mode: int,
                  sim_time: float,
-                 timestep: float):
+                 timestep: float,
+                 bypass_frac: float = None):
 
         if op_mode == 0:
             op_mode = OpMode.FLOAT
@@ -53,16 +62,16 @@ class TankBypassBranch(object):
         if op_mode == OpMode.FLOAT:
             self.outlet_temp = inlet_temp
             self.tank.calculate(inlet_temp, 0, env_temp, sim_time, timestep)
+            self.bypass_fraction = 1
             return
 
         # charging condition
         # all flow through tank
         if op_mode == OpMode.CHARGING:
-            # find outlet temp at max flow through tank
             m_dot_per_tank_max = mass_flow_rate / self.num_tanks
             self.tank.calculate(inlet_temp, m_dot_per_tank_max, env_temp, sim_time, timestep)
             self.outlet_temp = self.tank.outlet_fluid_temp
-            self.bypass_fraction = 1
+            self.bypass_fraction = 0
             return
 
         # discharging condition
@@ -80,9 +89,9 @@ class TankBypassBranch(object):
                 return
 
             # if we've made it here, we need to discharge
-            # find outlet temp at max flow through tank
-            m_dot_per_tank_max = mass_flow_rate / self.num_tanks
-            self.tank.calculate(inlet_temp, m_dot_per_tank_max, env_temp, sim_time, timestep)
+            # find outlet temp at flow rate through tank
+            m_dot_per_tank = mass_flow_rate / self.num_tanks
+            self.tank.calculate(inlet_temp, m_dot_per_tank, env_temp, sim_time, timestep)
             t_out_high = self.tank.outlet_fluid_temp
 
             # tank can't meet demand, all flow through tank
@@ -91,18 +100,19 @@ class TankBypassBranch(object):
                 self.bypass_fraction = 0
                 return
 
-            # finally, if we've made it here, we need to split flow between the tank and the bypass
-            x0 = np.array([self.bypass_fraction])
-            args = (inlet_temp, mass_flow_rate, env_temp, branch_set_point, sim_time, timestep)
-            bounds = ((0.0, 1.0),)
-            tol = 0.01
-            ret = minimize(self.obj_f, x0=x0, args=args, bounds=bounds, tol=tol)
-            self.bypass_fraction = ret.x[0]
-            self.outlet_temp = self.branch_outlet_temp(self.bypass_fraction, inlet_temp, mass_flow_rate, env_temp,
-                                                       sim_time,
-                                                       timestep)
-            self.tank_mass_flow = mass_flow_rate * (1 - self.bypass_fraction)
-            return
+        # finally, if we've made it here, we need to split flow between the tank and the bypass
+        init_guess = bypass_frac if bypass_frac else self.bypass_fraction
+        x0 = np.array([init_guess])
+        args = (inlet_temp, mass_flow_rate, env_temp, branch_set_point, sim_time, timestep)
+        bounds = ((0.0, 1.0),)
+        tol = 0.01
+        ret = minimize(self.obj_f, x0=x0, args=args, bounds=bounds, tol=tol)
+        self.bypass_fraction = ret.x[0]
+        self.outlet_temp = self.branch_outlet_temp(self.bypass_fraction, inlet_temp, mass_flow_rate, env_temp,
+                                                   sim_time,
+                                                   timestep)
+        self.tank_mass_flow = mass_flow_rate * (1 - self.bypass_fraction)
+        return
 
     def branch_outlet_temp(self, bypass_frac, inlet_temp, mass_flow_rate, env_temp, sim_time, timestep):
         m_dot_bypass = bypass_frac * mass_flow_rate
@@ -112,5 +122,8 @@ class TankBypassBranch(object):
         return ((m_dot_per_tank * t_out_tank * self.num_tanks) + (m_dot_bypass * inlet_temp)) / mass_flow_rate
 
     def obj_f(self, bypass_frac, inlet_temp, mass_flow_rate, env_temp, branch_set_point, sim_time, timestep):
-        t_out_branch = self.branch_outlet_temp(bypass_frac, inlet_temp, mass_flow_rate, env_temp, sim_time, timestep)
+        if type(bypass_frac) is float:
+            t_out_branch = self.branch_outlet_temp(bypass_frac, inlet_temp, mass_flow_rate, env_temp, sim_time, timestep)
+        else:
+            t_out_branch = self.branch_outlet_temp(bypass_frac[0], inlet_temp, mass_flow_rate, env_temp, sim_time, timestep)
         return abs(t_out_branch - branch_set_point)
