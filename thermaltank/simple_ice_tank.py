@@ -457,11 +457,11 @@ class IceTank(object):
         # sum(q_env * dt, q_brine * dt)
         q_brine = self.q_brine(inlet_temp, mass_flow_rate, timestep)
         q_env = self.q_env(env_temp, timestep)
-        q_tot = q_brine + q_env
+        self.q_tot = q_brine + q_env
 
         # left-hand side
         # M_fluid du = M_fluid * (u_fluid - u_fluid_old)
-        self.compute_state(q_tot)
+        self.compute_state(self.q_tot)
 
         # compute new outlet fluid temp
         self.outlet_fluid_temp = self.calculate_outlet_fluid_temp(inlet_temp, mass_flow_rate)
