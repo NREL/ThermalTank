@@ -38,6 +38,7 @@ class TankBypassBranch(object):
         self.tank = IceTank(tank_data)
         self.num_tanks = num_tanks
         self.outlet_temp = 0
+        self.q_tank = 0
         self.bypass_fraction = 0
         self.tank_mass_flow = 0
 
@@ -62,6 +63,7 @@ class TankBypassBranch(object):
         if op_mode == OpMode.FLOAT:
             self.outlet_temp = inlet_temp
             self.tank.calculate(inlet_temp, 0, env_temp, sim_time, timestep)
+            self.q_tank = self.tank.q_tot * self.num_tanks
             self.bypass_fraction = 1
             return
 
@@ -70,6 +72,7 @@ class TankBypassBranch(object):
         if op_mode == OpMode.CHARGING:
             m_dot_per_tank_max = mass_flow_rate / self.num_tanks
             self.tank.calculate(inlet_temp, m_dot_per_tank_max, env_temp, sim_time, timestep)
+            self.q_tank = self.tank.q_tot * self.num_tanks
             self.outlet_temp = self.tank.outlet_fluid_temp
             self.bypass_fraction = 0
             return
@@ -84,6 +87,7 @@ class TankBypassBranch(object):
             # there's no need to discharge, inlet temp is already lower than branch setpoint
             if t_out_low < branch_set_point:
                 self.tank.calculate(inlet_temp, 0, env_temp, sim_time, timestep)
+                self.q_tank = self.tank.q_tot * self.num_tanks
                 self.outlet_temp = inlet_temp
                 self.bypass_fraction = 1
                 return
@@ -92,6 +96,7 @@ class TankBypassBranch(object):
             # find outlet temp at flow rate through tank
             m_dot_per_tank = mass_flow_rate / self.num_tanks
             self.tank.calculate(inlet_temp, m_dot_per_tank, env_temp, sim_time, timestep)
+            self.q_tank = self.tank.q_tot * self.num_tanks
             t_out_high = self.tank.outlet_fluid_temp
 
             # tank can't meet demand, all flow through tank
@@ -118,6 +123,7 @@ class TankBypassBranch(object):
         m_dot_bypass = bypass_frac * mass_flow_rate
         m_dot_per_tank = (mass_flow_rate - m_dot_bypass) / self.num_tanks
         self.tank.calculate(inlet_temp, m_dot_per_tank, env_temp, sim_time, timestep)
+        self.q_tank = self.tank.q_tot * self.num_tanks
         t_out_tank = self.tank.outlet_fluid_temp
         return ((m_dot_per_tank * t_out_tank * self.num_tanks) + (m_dot_bypass * inlet_temp)) / mass_flow_rate
 
